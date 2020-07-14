@@ -1,0 +1,3 @@
+logmuse>=0.2.0
+pararead>=0.6.0
+pysam
