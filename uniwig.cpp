@@ -3,15 +3,29 @@
 #include <string>
 #include <sstream>
 #include <bits/stdc++.h>
+#include <vector>
 #include <deque>
-
+#include <zlib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "kseq.h"
+#include "khash.h"
 
-
+KSTREAM_INIT(gzFile, gzread, 0x10000)
 //using namespace std;
+typedef struct region_t {
+	char chrom;
+    int start;
+    int end;
+};
 
+std::vector<region_t> regions; 
+
+void addRegion(region_t reg)
+{
+    regions.push_back(reg);
+}
 
 static bool exactFixedFormat(int chrSize, int stepSize) {
     int countIndex = 1;
@@ -341,4 +355,65 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
 
     // We initiate an deque of 'closers', which are positions that will 
     // decrement the signal output (end points of a smoothed cut).
+}
+
+char *parse_bed(char *s, int32_t *st_, int32_t *en_)
+{
+	char *p, *q, *ctg = 0;
+	int32_t i, st = -1, en = -1;
+	for (i = 0, p = q = s;; ++q) {
+		if (*q == '\t' || *q == '\0') {
+			int c = *q;
+			*q = 0;
+			if (i == 0) ctg = p;
+			else if (i == 1) st = atol(p);
+			else if (i == 2) en = atol(p);
+			++i, p = q + 1;
+			if (c == '\0') break;
+		}
+	}
+	*st_ = st, *en_ = en;
+	return i >= 3? ctg : 0;
+}
+
+int main(int argc, char* argv[])
+{
+    const char* bedPath = argv[0];
+    //Needs checking if the file exists && better way to specify the file - CLI?
+	
+	
+    std::cout << "Bed file: " << bedPath;
+    gzFile fp;
+    kstream_t *ks;
+	kstring_t str = {0,0,0};
+    int32_t k = 0;
+    if ((fp = gzopen(bedPath, "r")) == 0){
+        std::cout << "\nOOOPs";
+		return 0;
+        }
+	ks = ks_init(fp);
+    std::cout << "\n WORKS";
+    region_t rg;
+    while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0) {
+		char *ctg;
+		int32_t st, en;
+        std:: cout << "\nI'm in";
+
+        ctg = parse_bed(str.s, &st, &en);
+        //std:: cout << "\nSTRING: " << str.s;
+        std:: cout << "\nCHROM: " << ctg;
+
+		if (ctg) 
+        { 
+            //std::cout << "\nCHROM:  " << ctg; 
+            rg.chrom = *ctg; 
+            rg.start = st; 
+            rg.end = en;
+            regions.push_back(rg);
+        }
+    }
+    std:: cout << "\nNumber of elements in a vector: " <<  regions.size();
+    free(str.s);
+	ks_destroy(ks);
+	gzclose(fp);
 }

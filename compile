@@ -1,1 +1,1 @@
-g++ -g -Wall -o uniwig uniwig.cpp -lm -O2
+g++ -g -Wall -o uniwig uniwig.cpp -lm -lz -O2
