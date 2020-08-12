@@ -378,7 +378,7 @@ char *parse_bed(char *s, int32_t *st_, int32_t *en_)
 
 int main(int argc, char* argv[])
 {
-    const char* bedPath = argv[0];
+    const char* bedPath = argv[1];
     //Needs checking if the file exists && better way to specify the file - CLI?
 	
 	
@@ -387,25 +387,22 @@ int main(int argc, char* argv[])
     kstream_t *ks;
 	kstring_t str = {0,0,0};
     int32_t k = 0;
-    if ((fp = gzopen(bedPath, "r")) == 0){
-        std::cout << "\nOOOPs";
+    fp = bedPath && strcmp(bedPath, "-")? gzopen(bedPath, "r") : gzdopen(0, "r");
+	if (fp == 0) {
+		fprintf(stderr, "ERROR: failed to open the input file\n");
 		return 0;
-        }
+	}
 	ks = ks_init(fp);
-    std::cout << "\n WORKS";
     region_t rg;
     while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0) {
 		char *ctg;
 		int32_t st, en;
-        std:: cout << "\nI'm in";
 
         ctg = parse_bed(str.s, &st, &en);
-        //std:: cout << "\nSTRING: " << str.s;
-        std:: cout << "\nCHROM: " << ctg;
+        std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
 
 		if (ctg) 
         { 
-            //std::cout << "\nCHROM:  " << ctg; 
             rg.chrom = *ctg; 
             rg.start = st; 
             rg.end = en;
