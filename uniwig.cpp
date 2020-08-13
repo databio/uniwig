@@ -27,6 +27,8 @@ void addRegion(region_t reg)
     regions.push_back(reg);
 }
 
+//TODO - change to operate on vector of genomic regions
+
 static bool exactFixedFormat(int chrSize, int stepSize) {
     int countIndex = 1;
     int previousCut = 0;
@@ -83,6 +85,7 @@ static bool exactFixedFormat(int chrSize, int stepSize) {
     return true;
 }
 
+//TODO - change to operate on vector of genomic regions
 
 static bool exactVariableFormat(int chrSize, int stepSize) {
     // All the countIndex stuff is only required for fixedFormat
@@ -120,6 +123,7 @@ static bool exactVariableFormat(int chrSize, int stepSize) {
     return true;
 }
 
+//TODO - change to operate on vector of genomic regions
 
 static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize) {
     // All the countIndex stuff is only required for fixedFormat
@@ -204,6 +208,7 @@ static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize) {
     return true;
 }
 
+//TODO - change to operate on vector of genomic regions
 
 static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize) {
     int countIndex = 1;
@@ -291,6 +296,9 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize) {
 
 // Parent functions that will be called from python. It will select either the
 // fixed or variable function according to argument choice.
+// TODO Can chromosome size potenatialy be a last record in Bed file? 
+// TODO - change to operate on vector of genomic regions
+
 static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool variableStep) {
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(NULL);
@@ -320,7 +328,7 @@ static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool vari
     }
     return true;
 }
-
+//TODO - change to operate on vector of genomic regions
 static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep) {
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(NULL);
@@ -403,6 +411,7 @@ int main(int argc, char* argv[])
 
 		if (ctg) 
         { 
+            //a vector of genomic regions to store all bed file regions - not the most efficient way - could be changed to AIList if needed as in IGD
             rg.chrom = *ctg; 
             rg.start = st; 
             rg.end = en;
