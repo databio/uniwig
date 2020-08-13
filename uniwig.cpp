@@ -245,14 +245,13 @@ static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize)
 
 //TODO - change to operate on vector of genomic regions
 
-static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize)
+static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, vector<int> input)
 {
     int countIndex = 1;
     int currentCount = 0;
     int cutSite = 0, previousCut = 0, endSite = 0;
 
     std::deque<int> closers;
-
     std::cin >> cutSite; // Grab the first cut
     cutSite -= smoothSize;
     endSite = cutSite + 1 + smoothSize * 2;
@@ -380,7 +379,7 @@ static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool vari
     return true;
 }
 //TODO - change to operate on vector of genomic regions
-static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep)
+static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep, vector<int> input)
 {
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(NULL);
@@ -397,7 +396,7 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
     }
     else
     {
-        smoothFixedFormat(chrSize, stepSize, smoothSize);
+        smoothFixedFormat(chrSize, stepSize, smoothSize, input);
     }
     return true;
 
@@ -510,6 +509,10 @@ int main(int argc, char *argv[])
     std::vector<chromosome> chromosomes;
     chromosomes = read_bed(bedPath);
     showChromosomes(chromosomes);
+    for(int chrom; chrom <= chromosomes.size(); chrom ++)
+    {
+        sitesToSmoothWig(6000, 1, 5, false, chromosomes[chrom].start);
+    }
     //Needs checking if the file exists && better way to specify the file - CLI?
     //FIle can't contain header
 }
