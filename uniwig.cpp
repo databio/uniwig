@@ -24,6 +24,19 @@ typedef struct region_t {
 //vector of vector of regions to store regions in one vector per chromosme
 std::vector<std::vector<region_t>> chromosomes; 
 
+void showChromosomes(std::vector<std::vector<region_t>> chroms)
+{  
+    //std::cout << "\nNumber of chromosomes:  "<<chroms.size();
+    for(int chrom = 0; chrom < chroms.size(); chrom++)
+    {
+        for(int reg = 0; reg < chroms[chrom].size(); reg ++)
+        {
+           region_t region = chroms[chrom][reg];
+           std:: cout << "\n" << region.chrom << "\t" << region.start << "\t" << region.end;
+        }
+    }
+
+}
 
 static bool exactFixedFormat(int chrSize, int stepSize) {
     int countIndex = 1;
@@ -398,38 +411,41 @@ int main(int argc, char* argv[])
 	}
 	ks = ks_init(fp);
     region_t rg;
-    char *chrom = 0;
+    char chrom = 0;
     std::vector<region_t> regions;
     while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0) {
 		char *ctg;
 		int32_t st, en;
         ctg = parse_bed(str.s, &st, &en);
         std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
+
         if(chrom == 0)
         {
-            std:: cout << "\nchrom: " << chrom;
-            *chrom = *ctg;
+            chrom = *ctg;
         }
 		if (ctg) 
         { 
             //a vector of genomic regions to store all bed file regions - not the most efficient way - could be changed to AIList if needed as in IGD
-            if(*ctg != *chrom)
+            if(*ctg != chrom)
             {
                 chromosomes.push_back(regions);
-                *chrom = *ctg; 
+                chrom = *ctg; 
+
                 regions.clear();
-                std:: cout << "\nRegions size should be 0: "<<regions.size();
+                //std:: cout << "\nRegions size should be 0: "<<regions.size() << "\nChromosome: " << chrom;
             }
             rg.chrom = *ctg; 
             rg.start = st; 
             rg.end = en;
-            std:: cout << "\nPushing back regions ...";
+            //std:: cout << "\nPushing back regions ...";
 
             regions.push_back(rg);
         }
     }
-    std:: cout << "\nNumber of chromosomes to analyze : " <<  chromosomes.size();
+     chromosomes.push_back(regions);
 
+    //std:: cout << "\nNumber of chromosomes to analyze : " <<  chromosomes.size();
+    showChromosomes(chromosomes);
     //IMPORTANT: requires sorted bedfile
     /*int chrom = regions[0].chrom; 
     for(int region = 0; region < regions.size(); region ++)
