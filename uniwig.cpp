@@ -19,10 +19,10 @@ typedef struct region_t {
 	char chrom;
     int start;
     int end;
+    region_t(){};
+    region_t(char chrom, int start, int end) {chrom = chrom; start = start; end = end;};
+    region_t(int err){};
 };
-
-//vector of vector of regions to store regions in one vector per chromosme
-std::vector<std::vector<region_t>> chromosomes; 
 
 void showChromosomes(std::vector<std::vector<region_t>> chroms)
 {  
@@ -393,12 +393,11 @@ char *parse_bed(char *s, int32_t *st_, int32_t *en_)
 	return i >= 3? ctg : 0;
 }
 
-int main(int argc, char* argv[])
+std::vector<std::vector<region_t>> read_bed(const char* bedPath)
 {
-    const char* bedPath = argv[1];
-    //Needs checking if the file exists && better way to specify the file - CLI?
-	
-	
+    //vector of vector of regions to store regions in one vector per chromosme
+    std::vector<std::vector<region_t>> chromosomes; 
+
     std::cout << "Bed file: " << bedPath;
     gzFile fp;
     kstream_t *ks;
@@ -407,7 +406,7 @@ int main(int argc, char* argv[])
     fp = bedPath && strcmp(bedPath, "-")? gzopen(bedPath, "r") : gzdopen(0, "r");
 	if (fp == 0) {
 		fprintf(stderr, "ERROR: failed to open the input file\n");
-		return 0;
+		exit;
 	}
 	ks = ks_init(fp);
     region_t rg;
@@ -417,7 +416,7 @@ int main(int argc, char* argv[])
 		char *ctg;
 		int32_t st, en;
         ctg = parse_bed(str.s, &st, &en);
-        std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
+        //std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
 
         if(chrom == 0)
         {
@@ -444,17 +443,22 @@ int main(int argc, char* argv[])
     }
      chromosomes.push_back(regions);
 
-    //std:: cout << "\nNumber of chromosomes to analyze : " <<  chromosomes.size();
-    showChromosomes(chromosomes);
-    //IMPORTANT: requires sorted bedfile
-    /*int chrom = regions[0].chrom; 
-    for(int region = 0; region < regions.size(); region ++)
-    {
-        if(!chrom == chrom) 
-       
-    } */ 
+    std:: cout << "\nFinished reading";
+
     free(str.s);
 	ks_destroy(ks);
 	gzclose(fp);
+    return chromosomes; 
+}
+
+int main(int argc, char* argv[])
+{
+    const char* bedPath = argv[1];
+    std::vector<std::vector<region_t>> chromosomes;
+    chromosomes = read_bed(bedPath);
+    showChromosomes(chromosomes);
+    //Needs checking if the file exists && better way to specify the file - CLI?
+	//FIle can't contain header 
+	
     
 }
