@@ -13,21 +13,17 @@
 #include "khash.h"
 
 KSTREAM_INIT(gzFile, gzread, 0x10000)
-//using namespace std;
+
+//one genomic region from bed file containing chromosome number, start and end of the region 
 typedef struct region_t {
 	char chrom;
     int start;
     int end;
 };
 
-std::vector<region_t> regions; 
+//vector of vector of regions to store regions in one vector per chromosme
+std::vector<std::vector<region_t>> chromosomes; 
 
-void addRegion(region_t reg)
-{
-    regions.push_back(reg);
-}
-
-//TODO - change to operate on vector of genomic regions
 
 static bool exactFixedFormat(int chrSize, int stepSize) {
     int countIndex = 1;
@@ -335,9 +331,9 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
     //bool variableStep;
     //int chrSize, stepSize, smoothSize;
     // We expect the first line given to be a wig header, which we just echo
-    std::string header;
-    getline(std::cin >> std::ws, header);  // Grab the first line (header)
-    std::cout << header << "\n";
+    //std::string header;
+    //getline(std::cin >> std::ws, header);  // Grab the first line (header)
+    //std::cout << header << "\n";
 
     if (variableStep) {
         smoothVariableFormat(chrSize, stepSize, smoothSize);
@@ -402,24 +398,47 @@ int main(int argc, char* argv[])
 	}
 	ks = ks_init(fp);
     region_t rg;
+    char *chrom = 0;
+    std::vector<region_t> regions;
     while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0) {
 		char *ctg;
 		int32_t st, en;
-
         ctg = parse_bed(str.s, &st, &en);
         std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
-
+        if(chrom == 0)
+        {
+            std:: cout << "\nchrom: " << chrom;
+            *chrom = *ctg;
+        }
 		if (ctg) 
         { 
             //a vector of genomic regions to store all bed file regions - not the most efficient way - could be changed to AIList if needed as in IGD
+            if(*ctg != *chrom)
+            {
+                chromosomes.push_back(regions);
+                *chrom = *ctg; 
+                regions.clear();
+                std:: cout << "\nRegions size should be 0: "<<regions.size();
+            }
             rg.chrom = *ctg; 
             rg.start = st; 
             rg.end = en;
+            std:: cout << "\nPushing back regions ...";
+
             regions.push_back(rg);
         }
     }
-    std:: cout << "\nNumber of elements in a vector: " <<  regions.size();
+    std:: cout << "\nNumber of chromosomes to analyze : " <<  chromosomes.size();
+
+    //IMPORTANT: requires sorted bedfile
+    /*int chrom = regions[0].chrom; 
+    for(int region = 0; region < regions.size(); region ++)
+    {
+        if(!chrom == chrom) 
+       
+    } */ 
     free(str.s);
 	ks_destroy(ks);
 	gzclose(fp);
+    
 }
