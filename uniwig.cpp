@@ -245,22 +245,24 @@ static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize)
 
 //TODO - change to operate on vector of genomic regions
 
-static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, vector<int> input)
+static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, std::vector<int> input)
 {
     int countIndex = 1;
     int currentCount = 0;
-    int cutSite = 0, previousCut = 0, endSite = 0;
+    int cutSite = 0, previousCut = 0, endSite = 0, iterator = 0; 
 
     std::deque<int> closers;
-    std::cin >> cutSite; // Grab the first cut
+    cutSite = input[iterator];
+    iterator++; 
+    //std::cin >> cutSite; // Grab the first cut
     cutSite -= smoothSize;
     endSite = cutSite + 1 + smoothSize * 2;
     if (cutSite < 1)
     {
         cutSite = 1;
     }
-
-    // std::cout << "Smooth Fixed format\n";
+    
+    std::cout << "\nSmooth Fixed format\n";
 
     // Print out 0s until the first cut
     while (countIndex < cutSite)
@@ -271,10 +273,12 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, vector<
     previousCut = cutSite;
 
     // Loop through cuts, converting to wiggle format
-    while (std::cin >> cutSite)
+    //while (std::cin >> cutSite)
+    while(iterator < input.size())
     {
-        cutSite -= smoothSize;
-        // std::cout << "Push: " << cutSite << "\n";
+        cutSite = input[iterator];
+        cutSite -= smoothSize; 
+        //std::cout << "Push: " << cutSite << "\n";
         ++currentCount;
         closers.push_back(cutSite + 1 + smoothSize * 2);
         if (cutSite < 1)
@@ -285,6 +289,7 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, vector<
         // if it's a duplicate read...
         if (cutSite == previousCut)
         {
+            iterator++;
             continue; // skip to next read
         }
 
@@ -310,12 +315,12 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, vector<
             }
             ++countIndex;
         }
+        iterator++;
         previousCut = cutSite;
     } // end while
 
     // In c we have to add one here for some reason.
     ++currentCount;
-
     // Finish chromosome by printing 0s until we each the end.
     while (countIndex <= chrSize)
     {
@@ -338,7 +343,7 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, vector<
         }
         ++countIndex;
     }
-
+    //std::cout << "\nHere";
     return true;
 }
 
@@ -379,16 +384,16 @@ static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool vari
     return true;
 }
 //TODO - change to operate on vector of genomic regions
-static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep, vector<int> input)
+static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input)
 {
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(NULL);
+
     //bool variableStep;
     //int chrSize, stepSize, smoothSize;
     // We expect the first line given to be a wig header, which we just echo
     //std::string header;
     //getline(std::cin >> std::ws, header);  // Grab the first line (header)
     //std::cout << header << "\n";
+
 
     if (variableStep)
     {
@@ -397,6 +402,7 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
     else
     {
         smoothFixedFormat(chrSize, stepSize, smoothSize, input);
+        std::cout << "\n Finished!!!";
     }
     return true;
 
@@ -511,8 +517,11 @@ int main(int argc, char *argv[])
     showChromosomes(chromosomes);
     for(int chrom; chrom <= chromosomes.size(); chrom ++)
     {
-        sitesToSmoothWig(6000, 1, 5, false, chromosomes[chrom].start);
+        //#TODO chromosome size - not working for more then one chromosometigh
+        bool result = sitesToSmoothWig(12, 1, 3, false, chromosomes[chrom].start);
+        std::cout << "\n Finished with: "<<result ;
     }
-    //Needs checking if the file exists && better way to specify the file - CLI?
-    //FIle can't contain header
+    
+
+    return 0 ;
 }
