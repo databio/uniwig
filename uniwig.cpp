@@ -14,6 +14,13 @@
 
 KSTREAM_INIT(gzFile, gzread, 0x10000)
 
+TODO list: 
+* chromosome size - how? 
+* header in bed 
+* make other functions work 
+* output not as stdout - call bigwig etc. 
+
+
 //one genomic region from bed file containing chromosome number, start and end of the region
 typedef struct chromosome
 {
@@ -402,7 +409,7 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
     else
     {
         smoothFixedFormat(chrSize, stepSize, smoothSize, input);
-        std::cout << "\n Finished!!!";
+        // /std::cout << "\n Finished!!!";
     }
     return true;
 
@@ -514,12 +521,13 @@ int main(int argc, char *argv[])
     const char *bedPath = argv[1];
     std::vector<chromosome> chromosomes;
     chromosomes = read_bed(bedPath);
-    showChromosomes(chromosomes);
-    for(int chrom; chrom <= chromosomes.size(); chrom ++)
+    // /showChromosomes(chromosomes);
+    for(int chrom; chrom < chromosomes.size(); chrom ++)
     {
         //#TODO chromosome size - not working for more then one chromosometigh
+        //TODO only sitestoSmoothWig fixed format works 
         bool result = sitesToSmoothWig(12, 1, 3, false, chromosomes[chrom].start);
-        std::cout << "\n Finished with: "<<result ;
+        // /std::cout << "\n Finished with: "<<result ;
     }
     
 
