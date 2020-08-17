@@ -11,44 +11,53 @@
 #include <string.h>
 #include "kseq.h"
 #include "khash.h"
+#include "bigWig.h"
 
 KSTREAM_INIT(gzFile, gzread, 0x10000)
 
-TODO list: 
-* chromosome size - how? 
-* header in bed 
-* make other functions work 
+/*TODO list: 
+* chromosome size - how? chromosome sizes file?  
+* handle header present in bed file
+* add header to wiggle format - template in smugwig Python code  
+* make other smooth/exact functions work 
 * output not as stdout - call bigwig etc. 
-
+* call big wig library instead of calling bigwig using PIPE */
 
 //one genomic region from bed file containing chromosome number, start and end of the region
 typedef struct chromosome
 {
     char chrom;
-    std::vector<int> start;
-    std::vector<int> end;
+    std::vector<int> starts;
+    std::vector<int> ends;
     //int size; //region count
 };
 
 void showChromosomes(std::vector<chromosome> chroms)
 {
+    std::cout << "\nRegions: ";
+
     for (int chr_nr = 0; chr_nr < chroms.size(); chr_nr++)
     {
         chromosome chromosome = chroms[chr_nr];
-        int length = chromosome.start.size(); //number of regions
+        int length = chromosome.starts.size(); //number of regions
         for (int reg = 0; reg < length; reg++)
         {
-            std::cout << "\n"<< chromosome.chrom << "\t" << chromosome.start[reg] << "\t" << chromosome.end[reg];
+            std::cout << "\n"<< chromosome.chrom << "\t" << chromosome.starts[reg] << "\t" << chromosome.ends[reg];
         }
+        std::cout << "\n";
     }
 }
 
-static bool exactFixedFormat(int chrSize, int stepSize)
+static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input)
 {
     int countIndex = 1;
     int previousCut = 0;
     int cutSite = 0;
-    std::cin >> cutSite; // Grab the first cut
+    int iterator = 0 ;
+    cutSite = input[iterator];
+    iterator++;
+    //std::cin >> cutSite; // Grab the first cut
+    std::cout<<"\nExact Fixed Format";
 
     // Use fixedStep wiggle format
     // Print out 0s until the first cut
@@ -63,12 +72,14 @@ static bool exactFixedFormat(int chrSize, int stepSize)
     // std::cerr << "Chrom size: " << chrSize << "\n";
 
     // Loop through cuts, converting to wiggle format
-    while (std::cin >> cutSite)
+    while (iterator < input.size())
     {
+        cutSite = input[iterator];
         // if it's a duplicate read...
         if (cutSite == previousCut)
         { // sum up all reads for this spot.
             currentCount++;
+            iterator++;
             continue;
         }
 
@@ -88,6 +99,7 @@ static bool exactFixedFormat(int chrSize, int stepSize)
             countIndex++;
         }
         previousCut = cutSite;
+        iterator++;
     } // end while
 
     // Finish the last one cut
@@ -110,23 +122,29 @@ static bool exactFixedFormat(int chrSize, int stepSize)
 
 //TODO - change to operate on vector of genomic regions
 
-static bool exactVariableFormat(int chrSize, int stepSize)
+static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> input)
 {
     // All the countIndex stuff is only required for fixedFormat
     int previousCut = 0;
     int cutSite = 0;
     int currentCount = 1;
+    int iterator = 0;
 
     int nReads = 1;
-    std::cin >> previousCut; // Grab the first cut
+    std::cout<<"\nExact Variable Format\n";
+    //std::cin >> previousCut; // Grab the first cut
     // Loop through cuts, converting to wiggle format
-    while (std::cin >> cutSite)
+    previousCut = input[iterator];
+    iterator++; 
+    while (iterator < input.size())
     {
+        cutSite = input[iterator];
         nReads++;
         // if it's a duplicate read...
         if (cutSite == previousCut)
         { // sum up all reads for this spot.
             currentCount++;
+            iterator++;
             continue;
         }
 
@@ -137,6 +155,7 @@ static bool exactVariableFormat(int chrSize, int stepSize)
         // reset for the current spot
         currentCount = 1;
         previousCut = cutSite;
+        iterator++;
     } // end while
 
     // Finish it off with the last 'previousCut'
@@ -151,16 +170,18 @@ static bool exactVariableFormat(int chrSize, int stepSize)
 
 //TODO - change to operate on vector of genomic regions
 
-static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize)
+static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize, std::vector<int> input )
 {
     // All the countIndex stuff is only required for fixedFormat
     int previousCut = 0;
     int cutSite = 0;
     int currentCount = 0;
-
+    int iterator = 0;
     std::deque<int> closers;
 
-    std::cin >> cutSite; // Grab the first cut
+    cutSite = input[iterator];
+    iterator++; 
+    //std::cin >> cutSite; // Grab the first cut
     cutSite -= smoothSize;
     int endSite = cutSite + 1 + smoothSize * 2;
 
@@ -171,10 +192,13 @@ static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize)
 
     previousCut = cutSite;
     int countIndex = cutSite;
+    std::cout << "\nSmooth Variable format\n";
 
     // Loop through cuts, converting to wiggle format
-    while (std::cin >> cutSite)
+    //while (std::cin >> cutSite)
+    while(iterator < input.size())
     {
+        cutSite = input[iterator];
         cutSite -= smoothSize;
         ++currentCount;
         closers.push_back(cutSite + 1 + smoothSize * 2);
@@ -186,6 +210,7 @@ static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize)
         // if it's a duplicate read...
         if (cutSite == previousCut)
         {
+            iterator++;
             continue; // skip to next read
         }
 
@@ -209,7 +234,7 @@ static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize)
             {
                 std::cout << countIndex << "\t" << currentCount << "\n";
             }
-
+            iterator++;
             ++countIndex;
         }
         previousCut = cutSite;
@@ -359,57 +384,28 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, std::ve
 // TODO Can chromosome size potenatialy be a last record in Bed file?
 // TODO - change to operate on vector of genomic regions
 
-static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool variableStep)
+static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input)
 {
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(NULL);
-
-    // get first argument as an int
-    // get second argument as a bool
-    // get third argument as an int
-    /*if(!PyArg_ParseTuple(args, "pii", &variableStep, &chrSize, &stepSize))
-        return Py_False; */
-
-    // We expect the first line given to be a wig header, which we just echo
-    std::string header;
-    getline(std::cin >> std::ws, header); // Grab the first line (header)
-    std::cout << header << "\n";
-
-    // std::cerr << "Chrom size: " << chrSize << "\n";
-    // std::cerr << "Variable step: " << variableStep << "\n";
-    // std::cerr << "Step size: " << stepSize << "\n";
-
-    // Loop through cuts, converting to wiggle format
     if (variableStep)
     {
-        exactVariableFormat(chrSize, stepSize);
+        exactVariableFormat(chrSize, stepSize, input);
     }
     else
     {
-        exactFixedFormat(chrSize, stepSize);
+        exactFixedFormat(chrSize, stepSize, input);
     }
     return true;
 }
 //TODO - change to operate on vector of genomic regions
 static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input)
 {
-
-    //bool variableStep;
-    //int chrSize, stepSize, smoothSize;
-    // We expect the first line given to be a wig header, which we just echo
-    //std::string header;
-    //getline(std::cin >> std::ws, header);  // Grab the first line (header)
-    //std::cout << header << "\n";
-
-
     if (variableStep)
     {
-        smoothVariableFormat(chrSize, stepSize, smoothSize);
+        smoothVariableFormat(chrSize, stepSize, smoothSize, input);
     }
     else
     {
         smoothFixedFormat(chrSize, stepSize, smoothSize, input);
-        // /std::cout << "\n Finished!!!";
     }
     return true;
 
@@ -460,7 +456,7 @@ std::vector<chromosome> read_bed(const char *bedPath)
 {
     //vector of vector of regions to store regions in one vector per chromosme
 
-    std::cout << "Bed file: " << bedPath;
+    std::cout << "Input file: " << bedPath << "\n";
     gzFile fp;
     kstream_t *ks;
     kstring_t str = {0, 0, 0};
@@ -496,14 +492,14 @@ std::vector<chromosome> read_bed(const char *bedPath)
                 chr.chrom = chrom;
                 std::vector<int> start; 
                 std::vector<int> end;
-                chr.end = start;
-                chr.start = end;
+                chr.ends = end;
+                chr.starts = start;
 
                 //std:: cout << "\nRegions size should be 0: "<<regions.size() << "\nChromosome: " << chrom;
             }
             chr.chrom = chrom;
-            chr.start.push_back(st);
-            chr.end.push_back(en);
+            chr.starts.push_back(st);
+            chr.ends.push_back(en);
             //std:: cout << "\nPushing back regions ...";
 
         }
@@ -521,13 +517,26 @@ int main(int argc, char *argv[])
     const char *bedPath = argv[1];
     std::vector<chromosome> chromosomes;
     chromosomes = read_bed(bedPath);
-    // /showChromosomes(chromosomes);
+    showChromosomes(chromosomes);
+    // Easy to paralallize with OpenMPI 
     for(int chrom; chrom < chromosomes.size(); chrom ++)
     {
         //#TODO chromosome size - not working for more then one chromosometigh
         //TODO only sitestoSmoothWig fixed format works 
-        bool result = sitesToSmoothWig(12, 1, 3, false, chromosomes[chrom].start);
-        // /std::cout << "\n Finished with: "<<result ;
+        std::vector<int> ends = chromosomes[chrom].ends;
+        //TODO tmp chr_size = last end + 10; 
+        int tmp_chrsize = ends.back() + 10;
+        std::cout << "\n************** STARTS ***********\n";
+        bool result_ef = sitesToExactWig(tmp_chrsize, 1, 3, false, chromosomes[chrom].starts);
+        bool result_vf = sitesToExactWig(tmp_chrsize, 1, 3, true, chromosomes[chrom].starts);
+        bool result = sitesToSmoothWig(tmp_chrsize, 1, 3, true, chromosomes[chrom].starts);
+        bool result_fixed = sitesToSmoothWig(tmp_chrsize, 1, 3, false, chromosomes[chrom].starts);
+        
+        std::cout << "\n************** ENDS ***********\n";
+        bool result_efen = sitesToExactWig(tmp_chrsize, 1, 3, false, chromosomes[chrom].ends);
+        bool result_vfen = sitesToExactWig(tmp_chrsize, 1, 3, true, chromosomes[chrom].ends);
+        bool resulten = sitesToSmoothWig(tmp_chrsize, 1, 3, true, chromosomes[chrom].ends);
+        bool result_fixeden = sitesToSmoothWig(tmp_chrsize, 1, 3, false, chromosomes[chrom].ends);
     }
     
 
