@@ -18,12 +18,12 @@ KSTREAM_INIT(gzFile, gzread, 0x10000)
 /*TODO list: 
 * add header to wiggle format and write wig file /stdout output
 * call big wig library instead of calling bigwig using PIPE 
-* CLI? */ 
+* CLI? */
 
 //one genomic region from bed file containing chromosome number, start and end of the region
 typedef struct chromosome
 {
-    char chrom;
+    char * chrom;
     std::vector<int> starts;
     std::vector<int> ends;
     //int size; //region count
@@ -39,14 +39,14 @@ void showChromosomes(std::vector<chromosome> chroms)
         int length = chromosome.starts.size(); //number of regions
         for (int reg = 0; reg < length; reg++)
         {
-            std::cout << "\n"
-                      << chromosome.chrom << "\t" << chromosome.starts[reg] << "\t" << chromosome.ends[reg];
+            std::string c = chromosome.chrom;
+            std::cout << "\n" << c << "\t" << chromosome.starts[reg] << "\t" << chromosome.ends[reg];
         }
         std::cout << "\n";
     }
 }
 
-static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input,  char chrom)
+static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input, std::string chrom)
 {
     int countIndex = 1;
     int previousCut = 0;
@@ -120,9 +120,9 @@ static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input, 
 
 //TODO - change to operate on vector of genomic regions
 
-static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> input, char chrom)
+static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> input, std::string chrom)
 {
-    std::cout <<"variableStep chrom="<<chrom <<"\n";
+    std::cout << "variableStep chrom=" << chrom << "\n";
 
     // All the countIndex stuff is only required for fixedFormat
     int previousCut = 0;
@@ -170,9 +170,9 @@ static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> inpu
 
 //TODO - change to operate on vector of genomic regions
 
-static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize, std::vector<int> input, char chrom)
+static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom)
 {
-    std::cout <<"variableStep chrom="<<chrom <<"\n";
+    std::cout << "variableStep chrom=" << chrom << "\n";
 
     // All the countIndex stuff is only required for fixedFormat
     int previousCut = 0;
@@ -279,7 +279,7 @@ static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize, std:
 
 //TODO - change to operate on vector of genomic regions
 
-static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, std::vector<int> input, char chrom)
+static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom)
 {
     int countIndex = 1;
     int currentCount = 0;
@@ -384,7 +384,7 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, std::ve
 // Parent functions that will be called from python. It will select either the
 // fixed or variable function according to argument choice.
 
-static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input,  char chrom)
+static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input,  std::string chrom)
 {
     if (variableStep)
     {
@@ -397,7 +397,7 @@ static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool vari
     return true;
 }
 //TODO - change to operate on vector of genomic regions
-static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input, char chrom)
+static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input,  std::string chrom)
 {
     if (variableStep)
     {
@@ -427,10 +427,12 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
     // decrement the signal output (end points of a smoothed cut).
 }
 
-char *parse_bed(char *s, int32_t *st_, int32_t *en_)
+char *parse_bed(char *s, int32_t *st_, int32_t *en_, char **r)
 {
     char *p, *q, *ctg = 0;
     int32_t i, st = -1, en = -1;
+    if (r)
+        *r = 0;
     for (i = 0, p = q = s;; ++q)
     {
         if (*q == '\t' || *q == '\0')
@@ -442,9 +444,13 @@ char *parse_bed(char *s, int32_t *st_, int32_t *en_)
             else if (i == 1)
                 st = atol(p);
             else if (i == 2)
+            {
                 en = atol(p);
+                if (r && c != 0)
+                    *r = q, *q = c;
+            }
             ++i, p = q + 1;
-            if (c == '\0')
+            if (i == 3 || c == '\0')
                 break;
         }
     }
@@ -469,27 +475,28 @@ std::vector<chromosome> read_bed(const char *bedPath)
     }
     ks = ks_init(fp);
     chromosome chr;
-    char chrom = 0;
+    char * chrom = 0;
     std::vector<chromosome> chromosomes;
+
     while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0)
     {
-        char *ctg;
+        char *ctg, *rest;
         int32_t st, en;
-        //wrong chromosome numer.
-        ctg = parse_bed(str.s, &st, &en);
+        ctg = parse_bed(str.s, &st, &en, &rest);
+
         //std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
 
         if (chrom == 0)
         {
-            chrom = *ctg;
+            chrom = ctg;
         }
         if (ctg)
         {
             //a vector of genomic regions to store all bed file regions - not the most efficient way - could be changed to AIList if needed as in IGD
-            if (*ctg != chrom)
+            if (ctg != chrom)
             {
                 chromosomes.push_back(chr);
-                chrom = *ctg;
+                chrom = ctg;
                 chr.chrom = chrom;
                 std::vector<int> start;
                 std::vector<int> end;
@@ -498,12 +505,13 @@ std::vector<chromosome> read_bed(const char *bedPath)
 
                 //std:: cout << "\nRegions size should be 0: "<<regions.size() << "\nChromosome: " << chrom;
             }
+
             chr.chrom = chrom;
             chr.starts.push_back(st);
             chr.ends.push_back(en);
-            //std:: cout << "\nPushing back regions ...";
         }
     }
+
     chromosomes.push_back(chr);
     //std::cout << "\nFinished reading";
     free(str.s);
@@ -568,12 +576,12 @@ int main(int argc, char *argv[])
         //std::cout << "\n************** STARTS ***********\n";
         //bool result_ef = sitesToExactWig(chrsize, stepSize, 3, false, chromosomes[chrom].starts);
         bool result_vf = sitesToExactWig(chrsize, stepSize, 3, true, chromosomes[chrom].starts, chromosomes[chrom].chrom);
-        
+
         //bool result = sitesToSmoothWig(chrsize, stepSize, 3, true, chromosomes[chrom].starts, chromosomes[chrom].chrom);
         //bool result_fixed = sitesToSmoothWig(chrsize, stepSize, 3, false, chromosomes[chrom].starts);
 
         //std::cout << "\n************** ENDS ***********\n";
-       //bool result_efen = sitesToExactWig(chrsitest.,ze, stepSize, 3, false, chromosomes[chrom].ends);
+        //bool result_efen = sitesToExactWig(chrsitest.,ze, stepSize, 3, false, chromosomes[chrom].ends);
         //bool result_vfen = sitesToExactWig(chrsize, stepSize, 3, true, chromosomes[chrom].ends);
         //bool resulten = sitesToSmoothWig(chrsize, stepSize, 3, true, chromosomes[chrom].ends);
         //bool result_fixeden = sitesToSmoothWig(chrsize, stepSize, 3, false, chromosomes[chrom].ends);
