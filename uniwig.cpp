@@ -162,7 +162,7 @@ static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> inpu
 
 static bool smoothVariableFormat(int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom)
 {
-    std::cout << "\nvariableStep chrom=" << chrom << "\n";
+    std::cout << "variableStep chrom=" << chrom << "\n";
 
     // All the countIndex stuff is only required for fixedFormat
     int previousCut = 0;
