@@ -22,9 +22,9 @@ typedef struct chromosome
     std::string chrom;
     std::vector<int> starts;
     std::vector<int> ends;
-    //int size; //region count
 };
 
+//function to print the regions from bed file
 void showChromosomes(std::vector<chromosome> chroms)
 {
     std::cout << "\nRegions: ";
@@ -44,16 +44,12 @@ void showChromosomes(std::vector<chromosome> chroms)
 static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input, std::string chrom)
 {
 
-   // fixedStep  chrom=chrN
-   // start=position  step=stepInterval
-   //[span=windowSize]
     int countIndex = 1;
     int previousCut = 0;
     int cutSite = 0;
     int iterator = 0;
     cutSite = input[iterator];
     iterator++;
-    //std::cin >> cutSite; // Grab the first cut
     std::cout<<"fixedStep chrom=" <<chrom<< " start=" << input[0] << " step=" << stepSize << "\n";
 
     // Use fixedStep wiggle format
@@ -65,8 +61,6 @@ static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input, 
     }
     int currentCount = 1;
     previousCut = cutSite;
-    // std::cerr << "First read: " << cutSite << "\n";
-    // std::cerr << "Chrom size: " << chrSize << "\n";
 
     // Loop through cuts, converting to wiggle format
     while (iterator < input.size())
@@ -117,7 +111,6 @@ static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input, 
     return true;
 }
 
-//TODO - change to operate on vector of genomic regions
 
 static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> input, std::string chrom)
 {
@@ -130,8 +123,7 @@ static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> inpu
     int iterator = 0;
 
     int nReads = 1;
-    //std::cout << "\nExact Variable Format\n";
-    //std::cin >> previousCut; // Grab the first cut
+
     // Loop through cuts, converting to wiggle format
     previousCut = input[iterator];
     iterator++;
@@ -162,7 +154,6 @@ static bool exactVariableFormat(int chrSize, int stepSize, std::vector<int> inpu
 
     // This is in here for debugging. We could remove this read counting
     // to speed things up further once things are stable.
-    // std::cerr << "Reads processed: " << nReads << "\n";
 
     return true;
 }
@@ -582,17 +573,6 @@ int main(int argc, char *argv[])
                 bool result_ends = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
             }
     }
-   /* for (int chrom; chrom < chromosomes.size(); chrom++)
-    {
-        chromosome chromosome = chromosomes[chrom];
-        std::string c = chromosome.chrom;
-        int last_end_id = chromosome.ends.size() - 1;
-        int chrsize = chromosome.ends[last_end_id];
-   
- 
-        bool result_vf = sitesToExactWig(chrsize, stepSize, 3, true, chromosome.starts, chromosome.chrom);
-
-    } */
 
     return 0;
 }
