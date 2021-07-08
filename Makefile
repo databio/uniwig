@@ -12,3 +12,5 @@ clean:
 test:
 	./uniwig test.bed 1 5 0
 
+opt:
+	$(CPP) $(CFLAGS) opt.cpp -o opt

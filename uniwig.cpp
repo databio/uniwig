@@ -13,6 +13,9 @@
 #include "khash.h"
 #include "bigWig.h"
 
+#include <stdbool.h>
+#include <getopt.h>
+
 KSTREAM_INIT(gzFile, gzread, 0x10000)
 
 
@@ -56,7 +59,7 @@ static bool exactFixedFormat(int chrSize, int stepSize, std::vector<int> input, 
     // Print out 0s until the first cut
     while (countIndex < cutSite)
     {
-        std::cout << 0 << "\n";
+        // std::cout << 0 << "\n";
         countIndex += stepSize;
     }
     int currentCount = 1;
@@ -292,7 +295,7 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, std::ve
     // Print out 0s until the first cut
     while (countIndex < cutSite)
     {
-        std::cout << 0 << "\n";
+        //std::cout << 0 << "\n";
         countIndex += stepSize; //step
     }
     previousCut = cutSite;
@@ -517,16 +520,75 @@ std::vector<chromosome> read_bed(const char *bedPath)
 int main(int argc, char *argv[])
 { //uniwig bedfile stepsize smoothSize(0 for no smoothing) variableformat(pass 1 if variable format wanted, 0 for fixed) 
    
-    if (argc < 2)
+    bool variableFormat = false;
+    int stepSize = 1;
+    int smoothSize = 1;
+    bool startMode = true;
+
+  static struct option long_options[] =
     {
-        std::cout << "No file specified";
-        return 1;
+      {"variableFormat",    required_argument, 0, 'v'},
+      {"stepSize",    required_argument, 0, 't'},
+      {"smoothSize",  required_argument, 0, 'm'},
+      {"startMode",  required_argument, 0, 'e'},
+      {"bedPath",  required_argument, 0, 'b'},
+      {0, 0, 0, 0}
+    };
+
+    int option_index = 0;
+    int opt; 
+    while ((opt = getopt_long(argc, argv, "vt:m:e", long_options, &option_index)) != -1) {
+        switch (opt) {
+        case 0:
+            fprintf (stderr, "positional argument 1?\n");
+        case 'v':
+            fprintf (stderr, "option -v\n");
+            variableFormat = true; break;
+        case 't': 
+            fprintf (stderr, "option -t with value '%s'\n", optarg);
+            stepSize = atoi(optarg); break;
+        case 'm':
+            fprintf (stderr, "option -m with value '%s'\n", optarg);
+            smoothSize = atoi(optarg); 
+            break;
+        case 'e':
+            fprintf (stderr, "option -v\n");
+            startMode = false; break;
+        default:
+            fprintf(stderr, "Usage: %s [-vtme] [file...]\n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
     }
 
-    const char *bedPath = argv[1];
-    int stepSize = atoi(argv[2]); //default 1
-    int smoothSize = atoi(argv[3]); //default 25 - if 0 - no smoothing
-    bool variableFormat = argv[4]; //default - fixed step 
+    // std::cerr << "option_index: " << optind << std::endl;
+    // char** positionals;
+    // positionals = &argv[optind];
+    // for (; *positionals; positionals++)
+    //     fprintf(stderr, "Positional: %s\n", *positionals);
+
+    const char *bedPath = argv[optind];
+    std::cerr << "Variable format: " << variableFormat << std::endl;
+    std::cerr << "Step size: " << stepSize << std::endl;
+    std::cerr << "Smooth size: " << smoothSize << std::endl;
+    std::cerr << "Start mode: " << startMode << std::endl;
+    std::cerr << "bedPath: " << bedPath << std::endl;
+    if (bedPath == 0) {
+        fprintf(stderr, "ERROR: failed to open the input file\n");
+    }
+    // return 0;
+
+
+    // if (argc < 2)
+    // {
+    //     std::cout << "No file specified";
+    //     return 1;
+    // }
+
+    // const char *bedPath = argv[1];
+    // int stepSize = atoi(argv[2]); //default 1
+    // int smoothSize = atoi(argv[3]); //default 25 - if 0 - no smoothing
+    // bool variableFormat = argv[4]; //default - fixed step 
+    // bool starts = argv[5]; 
 
     /* previous CLi: 
         "--mode", "smooth",
@@ -535,6 +597,9 @@ int main(int argc, char *argv[])
                             "--step-size", str(self.step_size) or "1",
                             "--smooth-length", str(self.smooth_length) or "25"] 
                             */
+
+
+
 
 
     //std::cout << "\nFile: " << bedPath << " StepSize: " << stepSize << " SmoothSize: " << smoothSize << " VariableFormat: " << variableFormat << "\n";
@@ -555,8 +620,11 @@ int main(int argc, char *argv[])
                 int last_end_id = chromosome.ends.size() - 1;
                 int chrsize = chromosome.ends[last_end_id];
 
-                bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-                bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+                if (startMode) {
+                    bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+                } else {
+                    bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+                }
             }
         
     }
@@ -568,9 +636,11 @@ int main(int argc, char *argv[])
                 std::string c = chromosome.chrom;
                 int last_end_id = chromosome.ends.size() - 1;
                 int chrsize = chromosome.ends[last_end_id];
-
-                bool result_starts = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-                bool result_ends = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+                if (startMode) {
+                    bool result_starts = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+                } else {
+                    bool result_ends = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+                }
             }
     }
 
