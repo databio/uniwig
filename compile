@@ -1,1 +1,0 @@
-c++ -g -Wall -o uniwig uniwig.cpp -lm -lz -O2

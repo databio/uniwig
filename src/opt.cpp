@@ -1,4 +1,4 @@
-
+// Demo file to show how to write a CLI with command-line options
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
