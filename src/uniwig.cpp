@@ -456,7 +456,7 @@ char *parse_bed(char *s, int32_t *st_, int32_t *en_, char **r)
 
 std::vector<chromosome> read_bed(const char *bedPath)
 {
-    //vector of vector of regions to store regions in one vector per chromosme
+    //vector of vector of regions to store regions in one vector per chromosome
 
     //std::cout << "\nInput file: " << bedPath << "\n";
     gzFile fp;
@@ -509,6 +509,10 @@ std::vector<chromosome> read_bed(const char *bedPath)
         }
     }
 
+    // sort the starts and ends respectively
+    std::sort(chr.starts.begin(),chr.starts.end());
+    std::sort(chr.ends.begin(),chr.ends.end());
+
     chromosomes.push_back(chr);
     //std::cout << "\nFinished reading";
     free(str.s);
@@ -523,14 +527,14 @@ int main(int argc, char *argv[])
     bool variableFormat = false;
     int stepSize = 1;
     int smoothSize = 1;
-    bool startMode = true;
+    // bool startMode = true;
 
   static struct option long_options[] =
     {
       {"variableFormat",    required_argument, 0, 'v'},
       {"stepSize",    required_argument, 0, 't'},
       {"smoothSize",  required_argument, 0, 'm'},
-      {"startMode",  required_argument, 0, 'e'},
+    //   {"startMode",  required_argument, 0, 'e'},
       {"bedPath",  required_argument, 0, 'b'},
       {0, 0, 0, 0}
     };
@@ -551,9 +555,9 @@ int main(int argc, char *argv[])
             fprintf (stderr, "option -m with value '%s'\n", optarg);
             smoothSize = atoi(optarg); 
             break;
-        case 'e':
-            fprintf (stderr, "option -v\n");
-            startMode = false; break;
+        // case 'e':
+        //     fprintf (stderr, "option -v\n");
+        //     startMode = false; break;
         default:
             fprintf(stderr, "Usage: %s [-vtme] [file...]\n", argv[0]);
             exit(EXIT_FAILURE);
@@ -570,7 +574,7 @@ int main(int argc, char *argv[])
     std::cerr << "Variable format: " << variableFormat << std::endl;
     std::cerr << "Step size: " << stepSize << std::endl;
     std::cerr << "Smooth size: " << smoothSize << std::endl;
-    std::cerr << "Start mode: " << startMode << std::endl;
+    // std::cerr << "Start mode: " << startMode << std::endl;
     std::cerr << "bedPath: " << bedPath << std::endl;
     if (bedPath == 0) {
         fprintf(stderr, "ERROR: failed to open the input file\n");
@@ -605,44 +609,66 @@ int main(int argc, char *argv[])
     //std::cout << "\nFile: " << bedPath << " StepSize: " << stepSize << " SmoothSize: " << smoothSize << " VariableFormat: " << variableFormat << "\n";
     std::vector<chromosome> chromosomes;
     chromosomes = read_bed(bedPath);
-    //showChromosomes(chromosomes);
+    // showChromosomes(chromosomes);
 
 
 
     // Easy to paralallize with OpenMPI
     //std::cout << "Number of chromosomes: " << chromosomes.size();
-    if(smoothSize == 0)
-    {
-            for (int chrom; chrom < chromosomes.size(); chrom++)
-            {
-                chromosome chromosome = chromosomes[chrom];
-                std::string c = chromosome.chrom;
-                int last_end_id = chromosome.ends.size() - 1;
-                int chrsize = chromosome.ends[last_end_id];
 
-                if (startMode) {
-                    bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-                } else {
-                    bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
-                }
-            }
+    for (int chrom; chrom<chromosomes.size(); chrom++)
+    {
+        chromosome chromosome = chromosomes[chrom];
+        std::string c = chromosome.chrom;
+        int last_end_id = chromosome.ends.size() - 1;
+        int chrsize = chromosome.ends[last_end_id];
+        if (smoothSize==0) 
+        {
+            bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+            bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+        }
+        else
+        {
+            bool result_st = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+            bool result_en = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+        }
         
     }
-    else if(smoothSize > 0)
-    {
-         for (int chrom; chrom < chromosomes.size(); chrom++)
-            {
-                chromosome chromosome = chromosomes[chrom];
-                std::string c = chromosome.chrom;
-                int last_end_id = chromosome.ends.size() - 1;
-                int chrsize = chromosome.ends[last_end_id];
-                if (startMode) {
-                    bool result_starts = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-                } else {
-                    bool result_ends = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
-                }
-            }
-    }
+
+
+
+    // if(smoothSize == 0)
+    // {
+    //         for (int chrom; chrom < chromosomes.size(); chrom++)
+    //         {
+    //             chromosome chromosome = chromosomes[chrom];
+    //             std::string c = chromosome.chrom;
+    //             int last_end_id = chromosome.ends.size() - 1;
+    //             int chrsize = chromosome.ends[last_end_id];
+
+    //             if (startMode) {
+    //                 bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+    //             } else {
+    //                 bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+    //             }
+    //         }
+        
+    // }
+    // else if(smoothSize > 0)
+    // {
+    //      for (int chrom; chrom < chromosomes.size(); chrom++)
+    //         {
+    //             chromosome chromosome = chromosomes[chrom];
+    //             std::string c = chromosome.chrom;
+    //             int last_end_id = chromosome.ends.size() - 1;
+    //             int chrsize = chromosome.ends[last_end_id];
+    //             if (startMode) {
+    //                 bool result_starts = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+    //             } else {
+    //                 bool result_ends = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+    //             }
+    //         }
+    // }
 
     return 0;
 }
