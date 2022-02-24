@@ -375,6 +375,153 @@ static bool smoothFixedFormat(int chrSize, int stepSize, int smoothSize, std::ve
     return true;
 }
 
+static int smoothFixedFormatBW(int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom, std::string order)
+{
+    std::vector<float> temp_values; // for later converting into array values to add to bw
+
+    int countIndex = 1;
+    int currentCount = 0;
+    int cutSite = 0, previousCut = 0, endSite = 0, iterator = 0;
+
+    std::deque<int> closers;
+    cutSite = input[iterator];
+    iterator++;
+    cutSite -= smoothSize;
+    endSite = cutSite + 1 + smoothSize * 2;
+    if (cutSite < 1)
+    {
+        cutSite = 1;
+    }
+
+    // Skip until the first cut
+    while (countIndex < cutSite)
+    {
+        countIndex += stepSize; //step
+    }
+    previousCut = cutSite;
+
+    // Loop through cuts, converting to wiggle format
+    //while (std::cin >> cutSite)
+    while (iterator < input.size())
+    {
+        cutSite = input[iterator];
+        cutSite -= smoothSize;
+        ++currentCount;
+        closers.push_back(cutSite + 1 + smoothSize * 2);
+        if (cutSite < 1)
+        {
+            cutSite = 1;
+        }
+
+        // if it's a duplicate read...
+        if (cutSite == previousCut)
+        {
+            iterator++;
+            continue; // skip to next read
+        }
+
+        //int whileloop = 0;
+        while (countIndex < cutSite)
+        {
+            while (endSite == countIndex)
+            {
+                --currentCount;
+                if (closers.empty())
+                {
+                    endSite = 0; // Must reset endSite to break return loop
+                }
+                else
+                {
+                    endSite = closers.front(); // return reference to first element
+                    closers.pop_front();       // removes the first element
+                }
+            }
+            if (countIndex % stepSize == 0)
+            {
+                // std::cout << currentCount << "\n";
+                temp_values.push_back((float) currentCount);
+            }
+            ++countIndex;
+        }
+        iterator++;
+        previousCut = cutSite;
+    } // end while
+
+    // In c we have to add one here for some reason.
+    ++currentCount;
+    // Finish chromosome by printing 0s until we each the end.
+    while (countIndex <= chrSize)
+    {
+        while (endSite == countIndex)
+        {
+            --currentCount;
+            if (closers.empty())
+            {
+                endSite = 0;
+            }
+            else
+            {
+                endSite = closers.front(); // return reference to first element
+                closers.pop_front();       // removes the first element
+            }
+        }
+        if (countIndex % stepSize == 0)
+        {
+            // std::cout << currentCount << "\n";
+            temp_values.push_back((float) currentCount);
+        }
+        ++countIndex;
+    }
+
+
+    bigWigFile_t *fp = NULL;
+    char *fname; 
+    if (order.compare("start")) {
+        fname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends-chr1.bw";
+    } else {
+        fname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-chr1.bw";
+    }
+
+    char *temp_chrom = &chrom.substr(chrom.length()-1,1)[0];
+    char *chroms[] = {"1"};
+    uint32_t chrLens[] = {248956422};
+
+    int n = temp_values.size();
+    float values[n];
+    for (int i=0; i<n; i++) {
+        values[i] = temp_values[i];
+    }
+    // float values[] = &int_values[0];
+    if (bwInit(1<<17) != 0) {
+        fprintf(stderr, "Error in bwInit\n");
+        return 1;
+    }
+
+    fp = bwOpen(fname, NULL, "w");
+    if (!fp) {
+        fprintf(stderr, "Error while opening file\n");
+        return 1;
+    }
+
+    if (bwCreateHdr(fp, 10)) goto error;
+    fp->cl = bwCreateChromList(chroms, chrLens, 1);
+    if (!fp->cl) goto error;
+    if (bwWriteHdr(fp)) goto error;
+
+    if (bwAddIntervalSpanSteps(fp,"1",input[0],1,1,values,n)) goto error;
+
+    bwClose(fp);
+    bwCleanup();
+
+    return 0;
+
+    error:
+        fprintf(stderr, "Received error somewhere\n");
+        bwClose(fp);
+        bwCleanup();
+        return 1;
+}
+
 // Parent functions that will be called from python. It will select either the
 // fixed or variable function according to argument choice.
 
@@ -405,22 +552,38 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
     }
     return true;
 
-    // The strategy here is to make a smoothed signal track (bigwig file) given
-    // the exact base-pair locations of the signals. We want to extend those
-    // signals out +/- some number. The problem is, this messes up sorting, so
-    // you can't simply split every value into a range surrounding it, because
-    // then you have to re-sort. This script uses an alternative algorithm that
-    // avoids that resorting step, resulting in better performance.
+    /*
+        The strategy here is to make a smoothed signal track (bigwig file) given
+        the exact base-pair locations of the signals. We want to extend those
+        signals out +/- some number. The problem is, this messes up sorting, so
+        you can't simply split every value into a range surrounding it, because
+        then you have to re-sort. This script uses an alternative algorithm that
+        avoids that resorting step, resulting in better performance.
 
-    // We conceptualize a nucleotide signal (or 'cut site') as a start and an
-    // end. We loop through each value and handle it as a start, while pushing
-    // the corresponding end onto a deque. We will then pull out the oldest
-    // 'end' items from the deque as we process through the values. Each new
-    // value increments the emitted value, while each 'closing' value
-    // decrements it.
+        We conceptualize a nucleotide signal (or 'cut site') as a start and an
+        end. We loop through each value and handle it as a start, while pushing
+        the corresponding end onto a deque. We will then pull out the oldest
+        'end' items from the deque as we process through the values. Each new
+        value increments the emitted value, while each 'closing' value
+        decrements it.
 
-    // We initiate an deque of 'closers', which are positions that will
-    // decrement the signal output (end points of a smoothed cut).
+        We initiate an deque of 'closers', which are positions that will
+        decrement the signal output (end points of a smoothed cut).
+    */
+}
+
+static bool sitesToSmoothBigWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input, std::string chrom, std::string order)
+{
+    if (variableStep)
+    {
+        smoothVariableFormat(0, stepSize, smoothSize, input, chrom);
+        // smoothVariableFormatBW(0, stepSize, smoothSize, input, chrom, order);
+    }
+    else
+    {
+        smoothFixedFormatBW(chrSize, stepSize, smoothSize, input, chrom, order);
+    }
+    return true;
 }
 
 char *parse_bed(char *s, int32_t *st_, int32_t *en_, char **r)
@@ -523,7 +686,7 @@ std::vector<chromosome> read_bed(const char *bedPath)
 
 int main(int argc, char *argv[])
 { //uniwig bedfile stepsize smoothSize(0 for no smoothing) variableformat(pass 1 if variable format wanted, 0 for fixed) 
-   
+
     bool variableFormat = false;
     int stepSize = 1;
     int smoothSize = 1;
@@ -601,11 +764,6 @@ int main(int argc, char *argv[])
                             "--step-size", str(self.step_size) or "1",
                             "--smooth-length", str(self.smooth_length) or "25"] 
                             */
-
-
-
-
-
     //std::cout << "\nFile: " << bedPath << " StepSize: " << stepSize << " SmoothSize: " << smoothSize << " VariableFormat: " << variableFormat << "\n";
     std::vector<chromosome> chromosomes;
     chromosomes = read_bed(bedPath);
@@ -614,7 +772,7 @@ int main(int argc, char *argv[])
 
 
     // Easy to paralallize with OpenMPI
-    //std::cout << "Number of chromosomes: " << chromosomes.size();
+    // std::cout << "Number of chromosomes: " << chromosomes.size();
 
     for (int chrom; chrom<chromosomes.size(); chrom++)
     {
@@ -624,51 +782,62 @@ int main(int argc, char *argv[])
         int chrsize = chromosome.ends[last_end_id];
         if (smoothSize==0) 
         {
-            bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-            bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+            // bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+            // bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+            int result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+            int result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
         }
         else
         {
-            bool result_st = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-            bool result_en = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+            bool result_st = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom, "start");
+            bool result_en = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom, "end");
         }
         
     }
 
+    // int isbw = bwIsBigWig("/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-chr1.bw",NULL);
+    // std::cout << isbw << "\n";
+
+    std::cout << "Should be finished by now" << "\n";
 
 
-    // if(smoothSize == 0)
-    // {
-    //         for (int chrom; chrom < chromosomes.size(); chrom++)
-    //         {
-    //             chromosome chromosome = chromosomes[chrom];
-    //             std::string c = chromosome.chrom;
-    //             int last_end_id = chromosome.ends.size() - 1;
-    //             int chrsize = chromosome.ends[last_end_id];
+    // bigWigFile_t *fp = NULL;
 
-    //             if (startMode) {
-    //                 bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-    //             } else {
-    //                 bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
-    //             }
-    //         }
-        
+    // char *chroms[] = {"1"};
+    // uint32_t chrLens[] = {248956422};
+
+    // float values[] = {0.0f, 1.0f, 200.0f,
+    //                   2.0f, 150.0f, 25.0f,
+    //                   0.0f, 1.0f, 200.0f,
+    //                   2.0f, 150.0f, 25.0f,
+    //                   5.0f, 20.0f, 25.0f,
+    //                   5.0f, 20.0f, 25.0f};
+    // if (bwInit(1<<17) != 0) {
+    //     fprintf(stderr, "Error in bwInit\n");
+    //     return 1;
     // }
-    // else if(smoothSize > 0)
-    // {
-    //      for (int chrom; chrom < chromosomes.size(); chrom++)
-    //         {
-    //             chromosome chromosome = chromosomes[chrom];
-    //             std::string c = chromosome.chrom;
-    //             int last_end_id = chromosome.ends.size() - 1;
-    //             int chrsize = chromosome.ends[last_end_id];
-    //             if (startMode) {
-    //                 bool result_starts = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-    //             } else {
-    //                 bool result_ends = sitesToSmoothWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
-    //             }
-    //         }
+
+    // fp = bwOpen("/home/ys4aj/research/hmm/uniwig/test/test_out.bw", NULL, "w");
+    // if (!fp) {
+    //     fprintf(stderr, "Error while opening file\n");
+    //     return 1;
     // }
+
+    // if (bwCreateHdr(fp, 10)) goto error;
+    // fp->cl = bwCreateChromList(chroms, chrLens, 1);
+    // if (!fp->cl) goto error;
+    // if (bwWriteHdr(fp)) goto error;
+
+    // if (bwAddIntervalSpanSteps(fp,"1",900,1,1,values,21)) goto error;
+
+    // bwClose(fp);
+    // bwCleanup();
 
     return 0;
+
+    // error:
+    //     fprintf(stderr, "Received error somewhere\n");
+    //     bwClose(fp);
+    //     bwCleanup();
+    //     return 1;
 }
