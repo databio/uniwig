@@ -17,7 +17,10 @@ $(BUILD_DIR)/opt:
 
 clean:
 	-rm $(BUILD_DIR)/uniwig
-	# -rm $(BUILD_DIR)/opt
 
 test:
 	./bin/uniwig test/test.bed 1 5 0
+
+rebuild:
+	$(MAKE) clean
+	$(MAKE) uniwig

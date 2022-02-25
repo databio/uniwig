@@ -5,6 +5,7 @@
 #include <bits/stdc++.h>
 #include <vector>
 #include <deque>
+#include <map>
 #include <zlib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include "kseq.h"
 #include "khash.h"
 #include "bigWig.h"
+#include "kxsort.h"
 
 #include <stdbool.h>
 #include <getopt.h>
@@ -473,18 +475,21 @@ static int smoothFixedFormatBW(int chrSize, int stepSize, int smoothSize, std::v
         ++countIndex;
     }
 
-
+    char *tempchrom = (char *) malloc(chrom.length()+1);
+    strcpy(tempchrom,chrom.c_str());
+    // std::cout << "till here segfault not occured" << "\n";
     bigWigFile_t *fp = NULL;
-    char *fname; 
+    std::string tempfname;
     if (order.compare("start")) {
-        fname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends-chr1.bw";
+        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends-chr"+chrom+".bw";
     } else {
-        fname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-chr1.bw";
+        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-chr"+chrom+".bw";
     }
+    char *fname = (char *) malloc(tempfname.length()+1);
+    strcpy(fname,tempfname.c_str());
 
-    char *temp_chrom = &chrom.substr(chrom.length()-1,1)[0];
-    char *chroms[] = {"1"};
-    uint32_t chrLens[] = {248956422};
+    char *chroms[] = {tempchrom};
+    uint32_t chrLens[] = {chrSize};
 
     int n = temp_values.size();
     float values[n];
@@ -503,20 +508,34 @@ static int smoothFixedFormatBW(int chrSize, int stepSize, int smoothSize, std::v
         return 1;
     }
 
-    if (bwCreateHdr(fp, 10)) goto error;
+    if (bwCreateHdr(fp, 10)) goto createHdrError;
     fp->cl = bwCreateChromList(chroms, chrLens, 1);
-    if (!fp->cl) goto error;
-    if (bwWriteHdr(fp)) goto error;
-
-    if (bwAddIntervalSpanSteps(fp,"1",input[0],1,1,values,n)) goto error;
+    if (!fp->cl) goto createChromListError;
+    if (bwWriteHdr(fp)) goto writeHdrError;
+    if (bwAddIntervalSpanSteps(fp,tempchrom,input[0],1,1,values,n)) goto addIntervalSpanStepsError;
 
     bwClose(fp);
     bwCleanup();
 
     return 0;
 
+    createHdrError:
+        fprintf(stderr, "Received createHdrError for chr%s\n", chrom.c_str());
+        goto error;
+
+    createChromListError:
+        fprintf(stderr, "Received createChromListError for chr%s\n", chrom.c_str());
+        goto error;
+
+    writeHdrError:
+        fprintf(stderr, "Received writeHdrError for chr%s\n", chrom.c_str());
+        goto error;
+
+    addIntervalSpanStepsError:
+        fprintf(stderr, "Received addIntervalSpanStepsError for chr%s\n", chrom.c_str());
+        goto error;
+
     error:
-        fprintf(stderr, "Received error somewhere\n");
         bwClose(fp);
         bwCleanup();
         return 1;
@@ -658,7 +677,10 @@ std::vector<chromosome> read_bed(const char *bedPath)
             if(strcmp(chrom, ctg) < 0)
             {
                 //std::cout << "\nI'm here, chrom = " << chrom << ", ctg = " << ctg <<  ", compare result: "<< strcmp(chrom, ctg) <<"\n";
+                kx::radix_sort(chr.starts.begin(),chr.starts.end());
+                kx::radix_sort(chr.ends.begin(),chr.ends.end());
                 chromosomes.push_back(chr);
+
                 strcpy(chrom, ctg);
                 chr.chrom = std::string(chrom);
                 std::vector<int> start;
@@ -673,8 +695,8 @@ std::vector<chromosome> read_bed(const char *bedPath)
     }
 
     // sort the starts and ends respectively
-    std::sort(chr.starts.begin(),chr.starts.end());
-    std::sort(chr.ends.begin(),chr.ends.end());
+    kx::radix_sort(chr.starts.begin(),chr.starts.end());
+    kx::radix_sort(chr.ends.begin(),chr.ends.end());
 
     chromosomes.push_back(chr);
     //std::cout << "\nFinished reading";
@@ -685,20 +707,18 @@ std::vector<chromosome> read_bed(const char *bedPath)
 }
 
 int main(int argc, char *argv[])
-{ //uniwig bedfile stepsize smoothSize(0 for no smoothing) variableformat(pass 1 if variable format wanted, 0 for fixed) 
-
+{
     bool variableFormat = false;
     int stepSize = 1;
     int smoothSize = 1;
-    // bool startMode = true;
 
   static struct option long_options[] =
     {
       {"variableFormat",    required_argument, 0, 'v'},
       {"stepSize",    required_argument, 0, 't'},
       {"smoothSize",  required_argument, 0, 'm'},
-    //   {"startMode",  required_argument, 0, 'e'},
       {"bedPath",  required_argument, 0, 'b'},
+      {"chromSizePath", required_argument, 0, 's'},
       {0, 0, 0, 0}
     };
 
@@ -718,68 +738,65 @@ int main(int argc, char *argv[])
             fprintf (stderr, "option -m with value '%s'\n", optarg);
             smoothSize = atoi(optarg); 
             break;
-        // case 'e':
-        //     fprintf (stderr, "option -v\n");
-        //     startMode = false; break;
         default:
             fprintf(stderr, "Usage: %s [-vtme] [file...]\n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
 
-    // std::cerr << "option_index: " << optind << std::endl;
-    // char** positionals;
-    // positionals = &argv[optind];
-    // for (; *positionals; positionals++)
-    //     fprintf(stderr, "Positional: %s\n", *positionals);
-
     const char *bedPath = argv[optind];
+    const char *chromSizePath = argv[optind+1];
     std::cerr << "Variable format: " << variableFormat << std::endl;
     std::cerr << "Step size: " << stepSize << std::endl;
     std::cerr << "Smooth size: " << smoothSize << std::endl;
-    // std::cerr << "Start mode: " << startMode << std::endl;
     std::cerr << "bedPath: " << bedPath << std::endl;
+    std::cerr << "chromSizePath: " << chromSizePath << std::endl;
     if (bedPath == 0) {
         fprintf(stderr, "ERROR: failed to open the input file\n");
+        return 1;
     }
-    // return 0;
+    if (chromSizePath==0) {
+        fprintf(stderr, "ERROR: failed to open the chrom size file\n");
+        return 1;
+    }
 
-
-    // if (argc < 2)
-    // {
-    //     std::cout << "No file specified";
-    //     return 1;
-    // }
-
-    // const char *bedPath = argv[1];
-    // int stepSize = atoi(argv[2]); //default 1
-    // int smoothSize = atoi(argv[3]); //default 25 - if 0 - no smoothing
-    // bool variableFormat = argv[4]; //default - fixed step 
-    // bool starts = argv[5]; 
-
-    /* previous CLi: 
-        "--mode", "smooth",
-                            "--chromsize", "0" if self.variable_step else str(chrom_size),
-                            "--step-type", "variable" if self.variable_step else "fixed",
-                            "--step-size", str(self.step_size) or "1",
-                            "--smooth-length", str(self.smooth_length) or "25"] 
-                            */
-    //std::cout << "\nFile: " << bedPath << " StepSize: " << stepSize << " SmoothSize: " << smoothSize << " VariableFormat: " << variableFormat << "\n";
     std::vector<chromosome> chromosomes;
     chromosomes = read_bed(bedPath);
     // showChromosomes(chromosomes);
 
-
+    std::map<std::string, int> chromSizes;
+    std::ifstream ReadChromSize(chromSizePath);
+    std::string eachSize;
+    std::string delim = "\t";
+    while (getline(ReadChromSize, eachSize)) {
+        // std::cout << "each line is: " << eachSize << std::endl;
+        std::string chromname = eachSize.substr(0,eachSize.find(delim));
+        int size = stoi(eachSize.substr(eachSize.find(delim),-1));
+        // std::cout << chromname << " " << size << std::endl;
+        chromSizes.insert(std::pair<std::string, int>(chromname, size));
+    }
 
     // Easy to paralallize with OpenMPI
-    // std::cout << "Number of chromosomes: " << chromosomes.size();
+    // std::cout << "Number of chromosomes: " << chromosomes.size() << std::endl;
+
+    // std::map<std::string, int>::iterator iter;
+    // for (iter=chromSizes.begin(); iter!=chromSizes.end(); iter++) {
+    //     std::cout << iter->first << " " << iter->second << std::endl;
+    // }
 
     for (int chrom; chrom<chromosomes.size(); chrom++)
     {
         chromosome chromosome = chromosomes[chrom];
         std::string c = chromosome.chrom;
-        int last_end_id = chromosome.ends.size() - 1;
-        int chrsize = chromosome.ends[last_end_id];
+        // int last_end_id = chromosome.ends.size() - 1;
+        // int chrsize = chromosome.ends[last_end_id];
+        int chrsize = chromSizes[c];
+        if (chrsize == 0) {
+            fprintf(stderr, "%s is not matched in the chrom_size file\n", c.c_str());
+            continue;
+        }
+        std::cout << c << " " << chrsize << std::endl;
+        std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
         if (smoothSize==0) 
         {
             // bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
@@ -789,55 +806,13 @@ int main(int argc, char *argv[])
         }
         else
         {
-            bool result_st = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom, "start");
-            bool result_en = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom, "end");
+            bool result_st = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, c_num, "start");
+            bool result_en = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, c_num, "end");
         }
-        
+
     }
 
-    // int isbw = bwIsBigWig("/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-chr1.bw",NULL);
-    // std::cout << isbw << "\n";
-
-    std::cout << "Should be finished by now" << "\n";
-
-
-    // bigWigFile_t *fp = NULL;
-
-    // char *chroms[] = {"1"};
-    // uint32_t chrLens[] = {248956422};
-
-    // float values[] = {0.0f, 1.0f, 200.0f,
-    //                   2.0f, 150.0f, 25.0f,
-    //                   0.0f, 1.0f, 200.0f,
-    //                   2.0f, 150.0f, 25.0f,
-    //                   5.0f, 20.0f, 25.0f,
-    //                   5.0f, 20.0f, 25.0f};
-    // if (bwInit(1<<17) != 0) {
-    //     fprintf(stderr, "Error in bwInit\n");
-    //     return 1;
-    // }
-
-    // fp = bwOpen("/home/ys4aj/research/hmm/uniwig/test/test_out.bw", NULL, "w");
-    // if (!fp) {
-    //     fprintf(stderr, "Error while opening file\n");
-    //     return 1;
-    // }
-
-    // if (bwCreateHdr(fp, 10)) goto error;
-    // fp->cl = bwCreateChromList(chroms, chrLens, 1);
-    // if (!fp->cl) goto error;
-    // if (bwWriteHdr(fp)) goto error;
-
-    // if (bwAddIntervalSpanSteps(fp,"1",900,1,1,values,21)) goto error;
-
-    // bwClose(fp);
-    // bwCleanup();
+    std::cout << "Finished" << "\n";
 
     return 0;
-
-    // error:
-    //     fprintf(stderr, "Received error somewhere\n");
-    //     bwClose(fp);
-    //     bwCleanup();
-    //     return 1;
 }
