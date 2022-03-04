@@ -22,7 +22,7 @@ KSTREAM_INIT(gzFile, gzread, 0x10000)
 
 
 //one genomic region from bed file containing chromosome number, start and end of the region
-typedef struct chromosome
+struct chromosome
 {
     std::string chrom;
     std::vector<int> starts;
@@ -30,12 +30,12 @@ typedef struct chromosome
 };
 
 //function to print the regions from bed file
-void showChromosomes(std::vector<chromosome> chroms)
+void showChromosomes(std::map<std::string, chromosome> chroms)
 {
     std::cout << "\nRegions: ";
-    for (int chr_nr = 0; chr_nr < chroms.size(); chr_nr++)
+    for (std::map<std::string, chromosome>::iterator it=chroms.begin(); it!=chroms.end(); it++)
     {
-        chromosome chromosome = chroms[chr_nr];
+        chromosome chromosome = it->second;
         int length = chromosome.starts.size(); //number of regions
         for (int reg = 0; reg < length; reg++)
         {
@@ -499,13 +499,13 @@ static int smoothFixedFormatBW(int chrSize, int stepSize, int smoothSize, std::v
     // float values[] = &int_values[0];
     if (bwInit(1<<17) != 0) {
         fprintf(stderr, "Error in bwInit\n");
-        return 1;
+        return false;
     }
 
     fp = bwOpen(fname, NULL, "w");
     if (!fp) {
         fprintf(stderr, "Error while opening file\n");
-        return 1;
+        return false;
     }
 
     if (bwCreateHdr(fp, 10)) goto createHdrError;
@@ -517,7 +517,7 @@ static int smoothFixedFormatBW(int chrSize, int stepSize, int smoothSize, std::v
     bwClose(fp);
     bwCleanup();
 
-    return 0;
+    return true;
 
     createHdrError:
         fprintf(stderr, "Received createHdrError for chr%s\n", chrom.c_str());
@@ -538,7 +538,7 @@ static int smoothFixedFormatBW(int chrSize, int stepSize, int smoothSize, std::v
     error:
         bwClose(fp);
         bwCleanup();
-        return 1;
+        return false;
 }
 
 // Parent functions that will be called from python. It will select either the
@@ -546,30 +546,31 @@ static int smoothFixedFormatBW(int chrSize, int stepSize, int smoothSize, std::v
 
 static bool sitesToExactWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input,  std::string chrom)
 {
-
     //std::cout << "\nchromosome in sites to exact wig: \n" << chrom;
+    bool status = false;
     if (variableStep)
     {
-        exactVariableFormat(0, stepSize, input, chrom);
+        status = exactVariableFormat(0, stepSize, input, chrom);
     }
     else
     {
-        exactFixedFormat(chrSize, stepSize, input, chrom);
+        status = exactFixedFormat(chrSize, stepSize, input, chrom);
     }
-    return true;
+    return status;
 }
 //TODO - change to operate on vector of genomic regions
 static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input,  std::string chrom)
 {
+    bool status = false;
     if (variableStep)
     {
-        smoothVariableFormat(0, stepSize, smoothSize, input, chrom);
+        status = smoothVariableFormat(0, stepSize, smoothSize, input, chrom);
     }
     else
     {
-        smoothFixedFormat(chrSize, stepSize, smoothSize, input, chrom);
+        status = smoothFixedFormat(chrSize, stepSize, smoothSize, input, chrom);
     }
-    return true;
+    return status;
 
     /*
         The strategy here is to make a smoothed signal track (bigwig file) given
@@ -593,16 +594,17 @@ static bool sitesToSmoothWig(int chrSize, int stepSize, int smoothSize, bool var
 
 static bool sitesToSmoothBigWig(int chrSize, int stepSize, int smoothSize, bool variableStep, std::vector<int> input, std::string chrom, std::string order)
 {
+    bool status = false;
     if (variableStep)
     {
-        smoothVariableFormat(0, stepSize, smoothSize, input, chrom);
+        status = smoothVariableFormat(0, stepSize, smoothSize, input, chrom);
         // smoothVariableFormatBW(0, stepSize, smoothSize, input, chrom, order);
     }
     else
     {
-        smoothFixedFormatBW(chrSize, stepSize, smoothSize, input, chrom, order);
+        status = smoothFixedFormatBW(chrSize, stepSize, smoothSize, input, chrom, order);
     }
-    return true;
+    return status;
 }
 
 char *parse_bed(char *s, int32_t *st_, int32_t *en_, char **r)
@@ -636,15 +638,14 @@ char *parse_bed(char *s, int32_t *st_, int32_t *en_, char **r)
     return i >= 3 ? ctg : 0;
 }
 
-std::vector<chromosome> read_bed(const char *bedPath)
+std::map<std::string, chromosome> read_bed(const char *bedPath)
 {
     //vector of vector of regions to store regions in one vector per chromosome
-
+    std::cout << "\nReading chromosomes" << std::endl;
     //std::cout << "\nInput file: " << bedPath << "\n";
     gzFile fp;
     kstream_t *ks;
     kstring_t str = {0, 0, 0};
-    int32_t k = 0;
     fp = bedPath && strcmp(bedPath, "-") ? gzopen(bedPath, "r") : gzdopen(0, "r");
     if (fp == 0)
     {
@@ -652,9 +653,10 @@ std::vector<chromosome> read_bed(const char *bedPath)
         exit(1);
     }
     ks = ks_init(fp);
-    chromosome chr;
+    // chromosome chr;
     char chrom[100] = "";
-    std::vector<chromosome> chromosomes;
+    std::map<std::string, chromosome> chromosomes;
+    // std::vector<chromosome> chromosomes;
 
     while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0)
     {
@@ -662,44 +664,31 @@ std::vector<chromosome> read_bed(const char *bedPath)
         int32_t st, en;
         ctg = parse_bed(str.s, &st, &en, &rest);
 
-        //std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
+        // std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
 
-        if (strcmp(chrom, "") == 0)
-        {
-            strcpy(chrom, ctg);
-            chr.chrom = std::string(chrom);
-            chr.starts.push_back(st);
-            chr.ends.push_back(en);
-            continue;
-        }
-        if (ctg)
-        {
-            if(strcmp(chrom, ctg) < 0)
-            {
-                //std::cout << "\nI'm here, chrom = " << chrom << ", ctg = " << ctg <<  ", compare result: "<< strcmp(chrom, ctg) <<"\n";
-                kx::radix_sort(chr.starts.begin(),chr.starts.end());
-                kx::radix_sort(chr.ends.begin(),chr.ends.end());
-                chromosomes.push_back(chr);
-
+        if (ctg) {
+            if (strcmp(chrom, ctg) != 0) {
                 strcpy(chrom, ctg);
-                chr.chrom = std::string(chrom);
-                std::vector<int> start;
-                std::vector<int> end;
-                chr.ends = end;
-                chr.starts = start;
+                if (chromosomes.find(chrom) == chromosomes.end()) {
+                    chromosome chr;
+                    chr.chrom = std::string(chrom);
+                    // fprintf(stderr, "Creating a new chromosome: %s\n", chr.chrom.c_str());
+                    chromosomes.insert(std::pair<std::string, chromosome>(chrom, chr));
+                }
             }
-
-            chr.starts.push_back(st);
-            chr.ends.push_back(en);
+            chromosomes[chrom].starts.push_back(st);
+            chromosomes[chrom].ends.push_back(en);
         }
     }
 
     // sort the starts and ends respectively
-    kx::radix_sort(chr.starts.begin(),chr.starts.end());
-    kx::radix_sort(chr.ends.begin(),chr.ends.end());
+    for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++) {
+        kx::radix_sort(it->second.starts.begin(),it->second.starts.end());
+        kx::radix_sort(it->second.ends.begin(),it->second.ends.end());
+    }
 
-    chromosomes.push_back(chr);
-    //std::cout << "\nFinished reading";
+
+    std::cout << "Reading finished" << std::endl;
     free(str.s);
     ks_destroy(ks);
     gzclose(fp);
@@ -760,7 +749,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    std::vector<chromosome> chromosomes;
+    std::map<std::string, chromosome> chromosomes;
     chromosomes = read_bed(bedPath);
     // showChromosomes(chromosomes);
 
@@ -783,36 +772,46 @@ int main(int argc, char *argv[])
     // for (iter=chromSizes.begin(); iter!=chromSizes.end(); iter++) {
     //     std::cout << iter->first << " " << iter->second << std::endl;
     // }
+    int success = 0, failure = 0;
+    std::cout << "\nStart processing each chromosome" << std::endl;
 
-    for (int chrom; chrom<chromosomes.size(); chrom++)
+    for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++)
     {
-        chromosome chromosome = chromosomes[chrom];
+        chromosome chromosome = it->second;
         std::string c = chromosome.chrom;
-        // int last_end_id = chromosome.ends.size() - 1;
-        // int chrsize = chromosome.ends[last_end_id];
+        /* checking if the chr starts and ends are sorted */
+        // fprintf(stderr, "%s\n", c.c_str());
+        // std::cout << "start sorted\t\t" << std::is_sorted(chromosome.starts.begin(),chromosome.starts.end()) << std::endl;
+        // std::cout << "end sorted\t\t" << std::is_sorted(chromosome.ends.begin(),chromosome.ends.end()) << std::endl;
         int chrsize = chromSizes[c];
         if (chrsize == 0) {
-            fprintf(stderr, "%s is not matched in the chrom_size file\n", c.c_str());
+            fprintf(stderr, "%s - not matched in the chrom_size file\n", c.c_str());
+            failure++;
             continue;
         }
-        std::cout << c << " " << chrsize << std::endl;
+        std::cout << c << " - uniwig with size " << chrsize << std::endl;
         std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
+        int result_st;
+        int result_en;
         if (smoothSize==0) 
         {
-            // bool result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-            // bool result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
-            int result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
-            int result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
+            result_st = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, chromosome.chrom);
+            result_en = sitesToExactWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, chromosome.chrom);
         }
         else
         {
-            bool result_st = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, c_num, "start");
-            bool result_en = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, c_num, "end");
+            result_st = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.starts, c_num, "start");
+            result_en = sitesToSmoothBigWig(chrsize, stepSize, smoothSize, variableFormat, chromosome.ends, c_num, "end");
         }
-
+        if (result_st && result_en) {
+            success++;
+        }
+        else {
+            failure++;
+        }
     }
 
-    std::cout << "Finished" << "\n";
+    std::cout << "Finished with " << success << " success and " << failure << " failure" << std::endl;
 
     return 0;
 }
