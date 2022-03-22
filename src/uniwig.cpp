@@ -49,7 +49,7 @@ void showChromosomes_map(std::map<std::string, chromosome> chroms)
 void showChromosomes_vec(std::vector<chromosome> chroms)
 {
     std::cout << "\nRegions: ";
-    for (int chr_nr = 0; chr_nr < chroms.size(); chr_nr++)
+    for (int chr_nr=0; chr_nr<chroms.size(); chr_nr++)
     {
         chromosome chromosome = chroms[chr_nr];
         int length = chromosome.starts.size(); //number of regions
@@ -62,14 +62,7 @@ void showChromosomes_vec(std::vector<chromosome> chroms)
     std::cout << "\n";
 }
 
-
-static bool exactVariableStartEndBW() {return false;}
-
-static bool exactFixedStartEndBW() {return false;}
-
-static bool smoothVariableStartEndBW() {return false;}
-
-static bool smoothFixedStartEndBW(int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom, std::string order)
+static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom, std::string order)
 {
     std::vector<float> temp_values; // for later converting into array values to add to bw
 
@@ -169,19 +162,14 @@ static bool smoothFixedStartEndBW(int chrSize, int stepSize, int smoothSize, std
 
     char *tempchrom = (char *) malloc(chrom.length()+1);
     strcpy(tempchrom,chrom.c_str());
-    // std::cout << "till here segfault not occured" << "\n";
-    bigWigFile_t *fp = NULL;
     std::string tempfname;
     if (order.compare("start")) {
-        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends-chr"+chrom+".bw";
+        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends.bw";
     } else {
-        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-chr"+chrom+".bw";
+        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined.bw";
     }
     char *fname = (char *) malloc(tempfname.length()+1);
     strcpy(fname,tempfname.c_str());
-
-    char *chroms[] = {tempchrom};
-    uint32_t chrLens[] = {chrSize};
 
     int n = temp_values.size();
     float values[n];
@@ -189,53 +177,33 @@ static bool smoothFixedStartEndBW(int chrSize, int stepSize, int smoothSize, std
         values[i] = temp_values[i];
     }
     // float values[] = &int_values[0];
-    if (bwInit(1<<17) != 0) {
-        fprintf(stderr, "Error in bwInit\n");
-        return false;
-    }
 
-    fp = bwOpen(fname, NULL, "w");
+    // if (bwInit(1<<17) != 0) {
+    //     fprintf(stderr, "Error in bwInit\n");
+    //     return false;
+    // }
+
     if (!fp) {
         fprintf(stderr, "Error while opening file\n");
         return false;
     }
 
-    if (bwCreateHdr(fp, 10)) goto createHdrError;
-    fp->cl = bwCreateChromList(chroms, chrLens, 1);
-    if (!fp->cl) goto createChromListError;
-    if (bwWriteHdr(fp)) goto writeHdrError;
-    if (bwAddIntervalSpanSteps(fp,tempchrom,input[0],1,1,values,n)) goto addIntervalSpanStepsError;
+    // for(int m=0; m<fp->cl->nKeys; m++) {
+    //     std::cout << m << " - " << fp->cl->chrom[m] << std::endl;
+    // }
 
-    bwClose(fp);
-    bwCleanup();
+    int err = bwAddIntervalSpanSteps(fp,tempchrom,input[0],1,1,values,n);
+    if (err) goto addIntervalSpanStepsError;
 
     return true;
 
-    createHdrError:
-        fprintf(stderr, "Received createHdrError for chr%s\n", chrom.c_str());
-        goto error;
-
-    createChromListError:
-        fprintf(stderr, "Received createChromListError for chr%s\n", chrom.c_str());
-        goto error;
-
-    writeHdrError:
-        fprintf(stderr, "Received writeHdrError for chr%s\n", chrom.c_str());
-        goto error;
-
     addIntervalSpanStepsError:
-        fprintf(stderr, "Received addIntervalSpanStepsError for chr%s\n", chrom.c_str());
-        goto error;
-
-    error:
-        bwClose(fp);
-        bwCleanup();
+        std::cout << "\t\tFailed addIntervalSpanStepsError for " << chrom << " - Error code " << err << std::endl;
         return false;
 }
 
-static bool VariableCoreBW() {return false;}
 
-static bool fixedCoreBW(int chrSize, int stepSize, std::vector<int> start, std::vector<int> end, std::string chrom)
+static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector<int> start, std::vector<int> end, std::string chrom)
 {
     std::vector<float> temp_values; // for later converting into array values to add to bw
 
@@ -338,15 +306,10 @@ static bool fixedCoreBW(int chrSize, int stepSize, std::vector<int> start, std::
 
     char *tempchrom = (char *) malloc(chrom.length()+1);
     strcpy(tempchrom,chrom.c_str());
-    // std::cout << "till here segfault not occured" << "\n";
-    bigWigFile_t *fp = NULL;
-    std::string tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-coverage-chr"+chrom+".bw";
+    std::string tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-coverage.bw";
 
     char *fname = (char *) malloc(tempfname.length()+1);
     strcpy(fname,tempfname.c_str());
-
-    char *chroms[] = {tempchrom};
-    uint32_t chrLens[] = {chrSize};
 
     int n = temp_values.size();
     float values[n];
@@ -354,70 +317,26 @@ static bool fixedCoreBW(int chrSize, int stepSize, std::vector<int> start, std::
         values[i] = temp_values[i];
     }
     // float values[] = &int_values[0];
-    if (bwInit(1<<17) != 0) {
-        fprintf(stderr, "Error in bwInit\n");
-        return false;
-    }
+    
+    // if (bwInit(1<<17) != 0) {
+    //     fprintf(stderr, "Error in bwInit\n");
+    //     return false;
+    // }
 
-    fp = bwOpen(fname, NULL, "w");
     if (!fp) {
         fprintf(stderr, "Error while opening file\n");
         return false;
     }
 
-    if (bwCreateHdr(fp, 10)) goto createHdrError;
-    fp->cl = bwCreateChromList(chroms, chrLens, 1);
-    if (!fp->cl) goto createChromListError;
-    if (bwWriteHdr(fp)) goto writeHdrError;
-    if (bwAddIntervalSpanSteps(fp,tempchrom,start[0],1,1,values,n)) goto addIntervalSpanStepsError;
-
-    bwClose(fp);
-    bwCleanup();
+    int err = bwAddIntervalSpanSteps(fp,tempchrom,start[0],1,1,values,n);
+    if (err) goto addIntervalSpanStepsError;
 
     return true;
 
-    createHdrError:
-        fprintf(stderr, "Received createHdrError for chr%s\n", chrom.c_str());
-        goto error;
-
-    createChromListError:
-        fprintf(stderr, "Received createChromListError for chr%s\n", chrom.c_str());
-        goto error;
-
-    writeHdrError:
-        fprintf(stderr, "Received writeHdrError for chr%s\n", chrom.c_str());
-        goto error;
-
     addIntervalSpanStepsError:
-        fprintf(stderr, "Received addIntervalSpanStepsError for chr%s\n", chrom.c_str());
-        goto error;
-
-    error:
-        bwClose(fp);
-        bwCleanup();
+        std::cout << "\t\tFailed addIntervalSpanStepsError for " << chrom << " - Error code " << err << std::endl;
         return false;
 }
-
-static int sitesToSmoothFixed(int chrSize, int stepSize, int smoothSize, std::vector<int> start, std::vector<int> end, std::string chrom)
-{
-    bool res_start = false, res_end = false, res_core = false;
-    std::cout << "\tprocessing start" << std::endl;
-    res_start = smoothFixedStartEndBW(chrSize, stepSize, smoothSize, start, chrom, "start");
-    std::cout << "\tprocessing end" << std::endl;
-    res_end = smoothFixedStartEndBW(chrSize, stepSize, smoothSize, end, chrom, "end");
-    std::cout << "\tprocessing core" << std::endl;
-    res_core = fixedCoreBW(chrSize, stepSize, start, end, chrom);
-    if (res_start && res_end && res_core) {
-        return 0;
-    }
-    return 1;
-}
-
-static int sitesToSmoothVariable() {return 1;}
-
-static int sitesToExactFixed() {return 1;}
-
-static int sitesToExactVariable() {return 1;}
 
 
 char *parse_bed(char *s, int32_t *st_, int32_t *en_, char **r)
@@ -501,7 +420,7 @@ std::map<std::string, chromosome> read_bed_map(const char *bedPath)
     }
 
 
-    std::cout << "Reading finished" << std::endl;
+    std::cout << "Reading finished\n" << std::endl;
     free(str.s);
     ks_destroy(ks);
     gzclose(fp);
@@ -512,10 +431,11 @@ std::vector<chromosome> read_bed_vec(const char *bedPath)
 {
     //vector of vector of regions to store regions in one vector per chromosome
     //std::cout << "\nInput file: " << bedPath << "\n";
+    std::cout << "\nReading chromosomes" << std::endl;
     gzFile fp;
     kstream_t *ks;
     kstring_t str = {0, 0, 0};
-    int32_t k = 0;
+    // int32_t k = 0;
     fp = bedPath && strcmp(bedPath, "-") ? gzopen(bedPath, "r") : gzdopen(0, "r");
     if (fp == 0)
     {
@@ -566,7 +486,7 @@ std::vector<chromosome> read_bed_vec(const char *bedPath)
     kx::radix_sort(chr.ends.begin(),chr.ends.end());
     chromosomes.push_back(chr);
 
-    std::cout << "Reading finished" << std::endl;
+    std::cout << "Reading finished\n" << std::endl;
     free(str.s);
     ks_destroy(ks);
     gzclose(fp);
@@ -637,99 +557,236 @@ int main(int argc, char *argv[])
     std::ifstream ReadChromSize(chromSizePath);
     std::string eachSize;
     std::string delim = "\t";
+    // std::vector<char*> temp_chroms;
+    // std::vector<uint32_t> temp_chrLens;
+    // int x = 0;
     while (getline(ReadChromSize, eachSize)) {
         // std::cout << "each line is: " << eachSize << std::endl;
         std::string chromname = eachSize.substr(0,eachSize.find(delim));
         int size = stoi(eachSize.substr(eachSize.find(delim),-1));
         // std::cout << chromname << " " << size << std::endl;
         chromSizes.insert(std::pair<std::string, int>(chromname, size));
+        // char *tempchrom = (char *) malloc(chromname.length()+1);
+        // strcpy(tempchrom, chromname.c_str());
+        // temp_chroms.push_back(tempchrom);
+        // temp_chrLens.push_back((uint32_t) size);
+        // x++;
     }
 
+
+    std::string fnames[3] = {
+        "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined.bw",
+        "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends.bw",
+        "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-coverage.bw"
+    };
+
+    // char *chroms[x];
+    // uint32_t chrLens[x];
+    // for (int i=0; i<x; i++) {
+    //     chroms[i] = temp_chroms[i];
+    //     chrLens[i] = temp_chrLens[i];
+    //     std::cout << chroms[i] << " - " << chrLens[i] << std::endl;
+    // }
+    // return 0;
 
     if (sorted) {
         std::vector<chromosome> chromosomes;
         chromosomes = read_bed_vec(bedPath);
         // showChromosomes_vec(chromosomes);
 
-        int success = 0, failure = 0;
-        std::cout << "\nStart processing each chromosome" << std::endl;
-
-        for (int chrom; chrom<chromosomes.size(); chrom++) {
-            chromosome chromosome = chromosomes[chrom];
+        int x = chromosomes.size();
+        char *chroms[x];
+        uint32_t chrLens[x];
+        for (int i=0; i<x; i++) {
+            chromosome chromosome = chromosomes[i];
             std::string c = chromosome.chrom;
-            /* checking if the chr starts and ends are sorted */
-            // fprintf(stderr, "%s\n", c.c_str());
-            // std::cout << "start sorted\t\t" << std::is_sorted(chromosome.starts.begin(),chromosome.starts.end()) << std::endl;
-            // std::cout << "end sorted\t\t" << std::is_sorted(chromosome.ends.begin(),chromosome.ends.end()) << std::endl;
-            int chrSize = chromSizes[c];
-            if (chrSize == 0) {
-                fprintf(stderr, "%s - not matched in the chrom_size file\n", c.c_str());
-                failure++;
-                continue;
-            }
-            std::cout << c << " - uniwig with size " << chrSize << std::endl;
-            std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
-
-            int result = 1;
-            if (smoothSize==0) {
-                result = (variableFormat)? sitesToExactVariable() : sitesToExactFixed();
-            }
-            else {
-                result = (variableFormat)? sitesToSmoothVariable() : sitesToSmoothFixed(chrSize, stepSize, smoothSize, chromosome.starts, chromosome.ends, c_num);
-            }
-
-            if (result==0) {
-                success++;
-            }
-            else {
-                failure++;
-            }
+            char *tempc = (char *) malloc(c.length()+1);
+            strcpy(tempc, c.c_str());
+            chroms[i] = tempc;
+            chrLens[i] = chromSizes[c];
         }
 
-        std::cout << "Finished with " << success << " success and " << failure << " failure" << std::endl;
+        for (int j=0; j<3; j++) { // for bw file
+            char *fname = (char *) malloc(fnames[j].length()+1);
+            strcpy(fname,fnames[j].c_str());
+
+            bigWigFile_t *fp = NULL;
+            if (bwInit(1<<17) != 0) {
+                fprintf(stderr, "Error in bwInit\n");
+                return 1;
+            }
+
+            fp = bwOpen(fname, NULL, "w");
+            if (!fp) {
+                fprintf(stderr, "Error while opening file\n");
+                return 1;
+            }
+
+            if (!bwCreateHdr(fp, 10)) {
+                fp->cl = bwCreateChromList(chroms, chrLens, x);
+                if (fp->cl) {
+                    if (!bwWriteHdr(fp)) {
+                        fprintf(stderr, "Successfully wrote header to %s\n", fname);
+                    }
+                }
+            }
+
+            // count for success
+            int success = 0, failure = 0;
+            std::cout << "Processing each chromosome" << std::endl;
+
+            // for chrom, write
+            for (int chrom=0; chrom<chromosomes.size(); chrom++) {
+                chromosome chromosome = chromosomes[chrom];
+                std::string c = chromosome.chrom;
+                /* checking if the chr starts and ends are sorted */
+                // fprintf(stderr, "%s\n", c.c_str());
+                // std::cout << "start sorted\t\t" << std::is_sorted(chromosome.starts.begin(),chromosome.starts.end()) << std::endl;
+                // std::cout << "end sorted\t\t" << std::is_sorted(chromosome.ends.begin(),chromosome.ends.end()) << std::endl;
+                int chrSize = chromSizes[c];
+                if (chrSize == 0) {
+                    fprintf(stderr, "\t%s - not matched in the chrom_size file\n", c.c_str());
+                    failure++;
+                    continue;
+                }
+                std::cout << "\t" << c << " - uniwig with size " << chrSize << " - ";
+                std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
+
+                bool result = false;
+                // ignoring smoothSize = 0 and variableFormat = true
+                if (smoothSize!=0 && !variableFormat) {
+                    switch (j) {
+                        case 0: {
+                            std::cout << "start" << std::endl;
+                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
+                            break;
+                        }
+                        case 1: {
+                            std::cout << "end" << std::endl;
+                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
+                            break;
+                        }
+                        case 2: {
+                            std::cout << "core" << std::endl;
+                            result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
+                            break;
+                        }                            
+                    }
+                }
+                if (result) {
+                    success++;
+                }
+                else {
+                    failure++;
+                }
+            }
+            std::cout << "Finished with " << success << " success and " << failure << " failure. Cleaning up buffer..." << std::endl;
+
+            bwClose(fp);
+            bwCleanup();
+
+            std::cout << "Buffer cleaned\n" << std::endl;
+        }
     }
     else {
         std::map<std::string, chromosome> chromosomes;
         chromosomes = read_bed_map(bedPath);
         // showChromosomes_map(chromosomes);
-        
-        int success = 0, failure = 0;
-        std::cout << "\nStart processing each chromosome" << std::endl;
 
-        for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++)
-        {
-            chromosome chromosome = it->second;
-            std::string c = chromosome.chrom;
-            /* checking if the chr starts and ends are sorted */
-            // fprintf(stderr, "%s\n", c.c_str());
-            // std::cout << "start sorted\t\t" << std::is_sorted(chromosome.starts.begin(),chromosome.starts.end()) << std::endl;
-            // std::cout << "end sorted\t\t" << std::is_sorted(chromosome.ends.begin(),chromosome.ends.end()) << std::endl;
-            int chrSize = chromSizes[c];
-            if (chrSize == 0) {
-                fprintf(stderr, "%s - not matched in the chrom_size file\n", c.c_str());
-                failure++;
-                continue;
-            }
-            std::cout << c << " - uniwig with size " << chrSize << std::endl;
-            std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
-
-            int result = 1;
-            if (smoothSize==0) {
-                result = (variableFormat)? sitesToExactVariable() : sitesToExactFixed();
-            }
-            else {
-                result = (variableFormat)? sitesToSmoothVariable() : sitesToSmoothFixed(chrSize, stepSize, smoothSize, chromosome.starts, chromosome.ends, c_num);
-            }
-
-            if (result==0) {
-                success++;
-            }
-            else {
-                failure++;
-            }
+        int x = chromosomes.size();
+        char *chroms[x];
+        uint32_t chrLens[x];
+        int i = 0;
+        for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++) {
+            std::string c = it->first;
+            char *tempc = (char *) malloc(c.length()+1);
+            strcpy(tempc, c.c_str());
+            chroms[i] = tempc;
+            chrLens[i] = chromSizes[c];
+            i++;
         }
+        
+        for (int j=0; j<3; j++) { // for bw file
+            char *fname = (char *) malloc(fnames[j].length()+1);
+            strcpy(fname,fnames[j].c_str());
 
-        std::cout << "Finished with " << success << " success and " << failure << " failure" << std::endl;
+            bigWigFile_t *fp = NULL;
+            if (bwInit(1<<17) != 0) {
+                fprintf(stderr, "Error in bwInit\n");
+                return 1;
+            }
+
+            fp = bwOpen(fname, NULL, "w");
+            if (!fp) {
+                fprintf(stderr, "Error while opening file\n");
+                return 1;
+            }
+
+            if (!bwCreateHdr(fp, 10)) {
+                fp->cl = bwCreateChromList(chroms, chrLens, x);
+                if (fp->cl) {
+                    if (!bwWriteHdr(fp)) {
+                        fprintf(stderr, "Successfully wrote header to %s\n", fname);
+                    }
+                }
+            }
+
+            // count for success
+            int success = 0, failure = 0;
+            std::cout << "Processing each chromosome" << std::endl;
+
+            // for chrom, write
+            for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++) {
+                chromosome chromosome = it->second;
+                std::string c = chromosome.chrom;
+                /* checking if the chr starts and ends are sorted */
+                // fprintf(stderr, "%s\n", c.c_str());
+                // std::cout << "start sorted\t\t" << std::is_sorted(chromosome.starts.begin(),chromosome.starts.end()) << std::endl;
+                // std::cout << "end sorted\t\t" << std::is_sorted(chromosome.ends.begin(),chromosome.ends.end()) << std::endl;
+                int chrSize = chromSizes[c];
+                if (chrSize == 0) {
+                    fprintf(stderr, "\t%s - not matched in the chrom_size file\n", c.c_str());
+                    failure++;
+                    continue;
+                }
+                std::cout << "\t" << c << " - uniwig with size " << chrSize << " - ";
+                std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
+
+                bool result = false;
+                // ignoring smoothSize = 0 and variableFormat = true
+                if (smoothSize!=0 && !variableFormat) {
+                    switch (j) {
+                        case 0: {
+                            std::cout << "start" << std::endl;
+                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
+                            break;
+                        }
+                        case 1: {
+                            std::cout << "end" << std::endl;
+                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
+                            break;
+                        }
+                        case 2: {
+                            std::cout << "core" << std::endl;
+                            result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
+                            break;
+                        }                            
+                    }
+                }
+                if (result) {
+                    success++;
+                }
+                else {
+                    failure++;
+                }
+            }
+            std::cout << "Finished with " << success << " success and " << failure << " failure. Cleaning up buffer..." << std::endl;
+
+            bwClose(fp);
+            bwCleanup();
+
+            std::cout << "Buffer cleaned\n" << std::endl;
+        }
     }
 
     return 0;
