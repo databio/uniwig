@@ -4,6 +4,14 @@ Given a set of bed files, we want to produce 2 wiggle files: one is the track of
 
 ## Compile
 
+You need libBigWig
+
+```
+git clone dpryan78/libBigWig
+cd libBigWig
+make install prefix=lib
+```
+
 Use the included `Makefile` to compile `/bin/uniwig`:
 
 ```
@@ -21,6 +29,9 @@ Clean (remove `/bin/uniwig`):
 ```
 make clean
 ```
+
+
+
 
 ## usage:
 
