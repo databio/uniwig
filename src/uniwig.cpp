@@ -164,9 +164,9 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
     strcpy(tempchrom,chrom.c_str());
     std::string tempfname;
     if (order.compare("start")) {
-        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends.bw";
+        tempfname = "non-ctcf-combined-ends.bw";
     } else {
-        tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined.bw";
+        tempfname = "non-ctcf-combined.bw";
     }
     char *fname = (char *) malloc(tempfname.length()+1);
     strcpy(fname,tempfname.c_str());
@@ -306,7 +306,7 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
 
     char *tempchrom = (char *) malloc(chrom.length()+1);
     strcpy(tempchrom,chrom.c_str());
-    std::string tempfname = "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-coverage.bw";
+    std::string tempfname = "non-ctcf-combined-coverage.bw";
 
     char *fname = (char *) malloc(tempfname.length()+1);
     strcpy(fname,tempfname.c_str());
@@ -575,9 +575,9 @@ int main(int argc, char *argv[])
 
 
     std::string fnames[3] = {
-        "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined.bw",
-        "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-ends.bw",
-        "/home/ys4aj/research/hmm/uniwig/data/bw/non-ctcf-combined-coverage.bw"
+        "non-ctcf-combined.bw",
+        "non-ctcf-combined-ends.bw",
+        "non-ctcf-combined-coverage.bw"
     };
 
     // char *chroms[x];
@@ -659,6 +659,7 @@ int main(int argc, char *argv[])
                         case 0: {
                             std::cout << "start" << std::endl;
                             result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
+                            std::cout << "start complete" << std::endl;
                             break;
                         }
                         case 1: {
