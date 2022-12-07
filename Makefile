@@ -18,8 +18,11 @@ $(BUILD_DIR)/opt:
 clean:
 	-rm $(BUILD_DIR)/uniwig
 
-test:
+test_old:  # remove?
 	./bin/uniwig test/test.bed 1 5 0
+
+tests:
+	./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes
 
 rebuild:
 	$(MAKE) clean
