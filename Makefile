@@ -3,7 +3,7 @@ CFLAGS="-Wall"
 # c++ -g -Wall -o uniwig uniwig.cpp -lm -lz -O2
 
 BUILD_DIR := ./bin
-LIB_DIR := libBigWig/lib/lib
+LIB_DIR := ../libBigWig
 
 uniwig: $(BUILD_DIR)/uniwig
 
@@ -22,7 +22,7 @@ test_old:  # remove?
 	./bin/uniwig test/test.bed 1 5 0
 
 tests:
-	./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes
+	./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes testout
 
 rebuild:
 	$(MAKE) clean

@@ -160,40 +160,23 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
         ++countIndex;
     }
 
-    char *tempchrom = (char *) malloc(chrom.length()+1);
+    char* tempchrom = new char[chrom.length()+1];
     strcpy(tempchrom,chrom.c_str());
-    std::string tempfname;
-    if (order.compare("start")) {
-        tempfname = "non-ctcf-combined-ends.bw";
-    } else {
-        tempfname = "non-ctcf-combined.bw";
-    }
-    char *fname = (char *) malloc(tempfname.length()+1);
-    strcpy(fname,tempfname.c_str());
 
     int n = temp_values.size();
-    float values[n];
+    float* values = new float[n];
     for (int i=0; i<n; i++) {
         values[i] = temp_values[i];
     }
-    // float values[] = &int_values[0];
-
-    // if (bwInit(1<<17) != 0) {
-    //     fprintf(stderr, "Error in bwInit\n");
-    //     return false;
-    // }
 
     if (!fp) {
         fprintf(stderr, "Error while opening file\n");
         return false;
     }
 
-    // for(int m=0; m<fp->cl->nKeys; m++) {
-    //     std::cout << m << " - " << fp->cl->chrom[m] << std::endl;
-    // }
-
     int err = bwAddIntervalSpanSteps(fp,tempchrom,input[0],1,1,values,n);
     if (err) goto addIntervalSpanStepsError;
+
 
     return true;
 
@@ -304,24 +287,14 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
         ++countIndex;
     }
 
-    char *tempchrom = (char *) malloc(chrom.length()+1);
+    char* tempchrom = new char[chrom.length()+1];
     strcpy(tempchrom,chrom.c_str());
-    std::string tempfname = "non-ctcf-combined-coverage.bw";
-
-    char *fname = (char *) malloc(tempfname.length()+1);
-    strcpy(fname,tempfname.c_str());
 
     int n = temp_values.size();
-    float values[n];
+    float* values = new float[n];
     for (int i=0; i<n; i++) {
         values[i] = temp_values[i];
     }
-    // float values[] = &int_values[0];
-    
-    // if (bwInit(1<<17) != 0) {
-    //     fprintf(stderr, "Error in bwInit\n");
-    //     return false;
-    // }
 
     if (!fp) {
         fprintf(stderr, "Error while opening file\n");
@@ -508,6 +481,7 @@ int main(int argc, char *argv[])
       {"smoothSize",  required_argument, 0, 'm'},
       {"bedPath",  required_argument, 0, 'b'},
       {"chromSizePath", required_argument, 0, 'c'},
+      {"fileHeader", required_argument, 0, 'f'},
       {0, 0, 0, 0}
     };
 
@@ -538,12 +512,14 @@ int main(int argc, char *argv[])
 
     const char *bedPath = argv[optind];
     const char *chromSizePath = argv[optind+1];
+    const char *fileHeader = argv[optind+2];
     std::cerr << "Variable format: " << variableFormat << std::endl;
     std::cerr << "Sorted bed file: " << sorted << std::endl;
     std::cerr << "Step size: " << stepSize << std::endl;
     std::cerr << "Smooth size: " << smoothSize << std::endl;
     std::cerr << "bedPath: " << bedPath << std::endl;
     std::cerr << "chromSizePath: " << chromSizePath << std::endl;
+    std::cerr << "FileHeader: " << fileHeader << std::endl;
     if (bedPath == 0) {
         fprintf(stderr, "ERROR: failed to open the input file\n");
         return 1;
@@ -566,18 +542,13 @@ int main(int argc, char *argv[])
         int size = stoi(eachSize.substr(eachSize.find(delim),-1));
         // std::cout << chromname << " " << size << std::endl;
         chromSizes.insert(std::pair<std::string, int>(chromname, size));
-        // char *tempchrom = (char *) malloc(chromname.length()+1);
-        // strcpy(tempchrom, chromname.c_str());
-        // temp_chroms.push_back(tempchrom);
-        // temp_chrLens.push_back((uint32_t) size);
-        // x++;
     }
 
 
     std::string fnames[3] = {
-        "non-ctcf-combined.bw",
-        "non-ctcf-combined-ends.bw",
-        "non-ctcf-combined-coverage.bw"
+        std::string(fileHeader)+"_start.bw",
+        std::string(fileHeader)+"_end.bw",
+        std::string(fileHeader)+"_core.bw"
     };
 
     // char *chroms[x];
@@ -600,14 +571,14 @@ int main(int argc, char *argv[])
         for (int i=0; i<x; i++) {
             chromosome chromosome = chromosomes[i];
             std::string c = chromosome.chrom;
-            char *tempc = (char *) malloc(c.length()+1);
+            char* tempc = new char[c.length()+1];
             strcpy(tempc, c.c_str());
             chroms[i] = tempc;
             chrLens[i] = chromSizes[c];
         }
 
         for (int j=0; j<3; j++) { // for bw file
-            char *fname = (char *) malloc(fnames[j].length()+1);
+            char* fname = new char[fnames[j].length()+1];
             strcpy(fname,fnames[j].c_str());
 
             bigWigFile_t *fp = NULL;
@@ -700,7 +671,7 @@ int main(int argc, char *argv[])
         int i = 0;
         for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++) {
             std::string c = it->first;
-            char *tempc = (char *) malloc(c.length()+1);
+            char* tempc = new char[c.length()+1];
             strcpy(tempc, c.c_str());
             chroms[i] = tempc;
             chrLens[i] = chromSizes[c];
@@ -708,7 +679,7 @@ int main(int argc, char *argv[])
         }
         
         for (int j=0; j<3; j++) { // for bw file
-            char *fname = (char *) malloc(fnames[j].length()+1);
+            char* fname = new char[fnames[j].length()+1];
             strcpy(fname,fnames[j].c_str());
 
             bigWigFile_t *fp = NULL;
