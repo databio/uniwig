@@ -3,11 +3,25 @@
 # bulker activate databio/peppro
 export PATH=~/.local/bin:$PATH
 
-cd "/project/shefflab/processed/bedhmm/ctcf/"
-cat *.bed > /home/ys4aj/research/hmm/uniwig/data/bed/non_ctcf_combined.bed
+# uniwig directory
+UNIWIG_DIR="./"
+# refgenie chrom_size file path
+CHROMSIZE="./test/hg38.chrom.sizes"
 
-# cd "/home/ys4aj/research/hmm/uniwig/data/bed/"
-# grep -P "chr1\t" non_ctcf_combined.bed > non_ctcf_combined_chr1.bed
+# directory for the raw data (bed files)
+RAWDATA_DIR="./data/raw/"
+# directory for combined data
+COMBDATA_DIR="./data/combined/"
+# directory for bw files output
+BW_DIR="./data/bw/"
 
-cd "/home/ys4aj/research/hmm/uniwig/"
-time ./bin/uniwig -m 25 data/bed/non_ctcf_combined.bed `refgenie seek hg38/fasta.chrom_sizes`
+# raw data filename
+raw="*.bed"
+# unsorted combined data filename
+unsorted="combined_unsort.bed"
+# file header for bw files output
+header="test"
+
+cat $RAWDATA_DIR$raw > $COMBDATA_DIR$unsorted
+
+time ./bin/uniwig -m 25 $COMBDATA_DIR$unsorted $CHROMSIZE $BW_DIR$header
