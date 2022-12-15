@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <getopt.h>
 
+
 KSTREAM_INIT(gzFile, gzread, 0x10000)
 
 
@@ -177,11 +178,13 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
     int err = bwAddIntervalSpanSteps(fp,tempchrom,input[0],1,1,values,n);
     if (err) goto addIntervalSpanStepsError;
 
+    delete[] tempchrom;
+    delete[] values;
 
     return true;
 
     addIntervalSpanStepsError:
-        std::cout << "\t\tFailed addIntervalSpanStepsError for " << chrom << " - Error code " << err << std::endl;
+        std::cout << "\n\t\tFailed addIntervalSpanStepsError for " << chrom << " - Error code " << err << std::endl;
         return false;
 }
 
@@ -304,10 +307,13 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
     int err = bwAddIntervalSpanSteps(fp,tempchrom,start[0],1,1,values,n);
     if (err) goto addIntervalSpanStepsError;
 
+    delete[] tempchrom;
+    delete[] values;
+
     return true;
 
     addIntervalSpanStepsError:
-        std::cout << "\t\tFailed addIntervalSpanStepsError for " << chrom << " - Error code " << err << std::endl;
+        std::cout << "\n\t\tFailed addIntervalSpanStepsError for " << chrom << " - Error code " << err << std::endl;
         return false;
 }
 
@@ -551,14 +557,6 @@ int main(int argc, char *argv[])
         std::string(fileHeader)+"_core.bw"
     };
 
-    // char *chroms[x];
-    // uint32_t chrLens[x];
-    // for (int i=0; i<x; i++) {
-    //     chroms[i] = temp_chroms[i];
-    //     chrLens[i] = temp_chrLens[i];
-    //     std::cout << chroms[i] << " - " << chrLens[i] << std::endl;
-    // }
-    // return 0;
 
     if (sorted) {
         std::vector<chromosome> chromosomes;
@@ -620,39 +618,44 @@ int main(int argc, char *argv[])
                     failure++;
                     continue;
                 }
-                std::cout << "\t" << c << " - uniwig with size " << chrSize << " - ";
-                std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
-
-                bool result = false;
-                // ignoring smoothSize = 0 and variableFormat = true
-                if (smoothSize!=0 && !variableFormat) {
-                    switch (j) {
-                        case 0: {
-                            std::cout << "start" << std::endl;
-                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
-                            std::cout << "start complete" << std::endl;
-                            break;
-                        }
-                        case 1: {
-                            std::cout << "end" << std::endl;
-                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
-                            break;
-                        }
-                        case 2: {
-                            std::cout << "core" << std::endl;
-                            result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
-                            break;
-                        }                            
-                    }
-                }
-                if (result) {
-                    success++;
-                }
                 else {
-                    failure++;
+                    std::cout << "\t" << c << "\t- uniwig with size " << chrSize << "\t- ";
+                    std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
+
+                    bool result = false;
+                    // ignoring smoothSize = 0 and variableFormat = true
+                    if (smoothSize!=0 && !variableFormat) {
+                        switch (j) {
+                            case 0: {
+                                std::cout << "start";
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
+                                break;
+                            }
+                            case 1: {
+                                std::cout << "end";
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
+                                break;
+                            }
+                            case 2: {
+                                std::cout << "core";
+                                result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
+                                break;
+                            }                            
+                        }
+                    }
+                    if (result) {
+                        std::cout << "\t complete" << std::endl;
+                        success++;
+                    }
+                    else {
+                        std::cout << "\t failed" << std::endl;
+                        failure++;
+                    }
                 }
             }
             std::cout << "Finished with " << success << " success and " << failure << " failure. Cleaning up buffer..." << std::endl;
+
+            delete[] fname;
 
             bwClose(fp);
             bwCleanup();
@@ -721,38 +724,44 @@ int main(int argc, char *argv[])
                     failure++;
                     continue;
                 }
-                std::cout << "\t" << c << " - uniwig with size " << chrSize << " - ";
-                std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
-
-                bool result = false;
-                // ignoring smoothSize = 0 and variableFormat = true
-                if (smoothSize!=0 && !variableFormat) {
-                    switch (j) {
-                        case 0: {
-                            std::cout << "start" << std::endl;
-                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
-                            break;
-                        }
-                        case 1: {
-                            std::cout << "end" << std::endl;
-                            result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
-                            break;
-                        }
-                        case 2: {
-                            std::cout << "core" << std::endl;
-                            result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
-                            break;
-                        }                            
-                    }
-                }
-                if (result) {
-                    success++;
-                }
                 else {
-                    failure++;
+                    std::cout << "\t" << c << "\t- uniwig with size " << chrSize << "\t- ";
+                    std::string c_num = c.substr(3,-1); // this is used as chrom name in bigWig.h
+
+                    bool result = false;
+                    // ignoring smoothSize = 0 and variableFormat = true
+                    if (smoothSize!=0 && !variableFormat) {
+                        switch (j) {
+                            case 0: {
+                                std::cout << "start";
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
+                                break;
+                            }
+                            case 1: {
+                                std::cout << "end";
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
+                                break;
+                            }
+                            case 2: {
+                                std::cout << "core";
+                                result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
+                                break;
+                            }                            
+                        }
+                    }
+                    if (result) {
+                        std::cout << "\t complete" << std::endl;
+                        success++;
+                    }
+                    else {
+                        std::cout << "\t failed" << std::endl;
+                        failure++;
+                    }
                 }
             }
             std::cout << "Finished with " << success << " success and " << failure << " failure. Cleaning up buffer..." << std::endl;
+
+            delete[] fname;
 
             bwClose(fp);
             bwCleanup();
