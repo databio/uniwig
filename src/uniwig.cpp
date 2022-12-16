@@ -176,10 +176,10 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
     }
 
     int err = bwAddIntervalSpanSteps(fp,tempchrom,input[0],1,1,values,n);
-    if (err) goto addIntervalSpanStepsError;
-
     delete[] tempchrom;
     delete[] values;
+    bwCleanup();
+    if (err) goto addIntervalSpanStepsError;
 
     return true;
 
@@ -305,10 +305,10 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
     }
 
     int err = bwAddIntervalSpanSteps(fp,tempchrom,start[0],1,1,values,n);
-    if (err) goto addIntervalSpanStepsError;
-
     delete[] tempchrom;
     delete[] values;
+    bwCleanup();
+    if (err) goto addIntervalSpanStepsError;
 
     return true;
 
@@ -575,7 +575,7 @@ int main(int argc, char *argv[])
             chrLens[i] = chromSizes[c];
         }
 
-        for (int j=0; j<3; j++) { // for bw file
+        for (int j=0; j<1; j++) { // for bw file
             char* fname = new char[fnames[j].length()+1];
             strcpy(fname,fnames[j].c_str());
 
@@ -604,6 +604,7 @@ int main(int argc, char *argv[])
             int success = 0, failure = 0;
             std::cout << "Processing each chromosome" << std::endl;
 
+            
             // for chrom, write
             for (int chrom=0; chrom<chromosomes.size(); chrom++) {
                 chromosome chromosome = chromosomes[chrom];
@@ -654,13 +655,16 @@ int main(int argc, char *argv[])
                 }
             }
             std::cout << "Finished with " << success << " success and " << failure << " failure. Cleaning up buffer..." << std::endl;
-
+            
             delete[] fname;
 
             bwClose(fp);
             bwCleanup();
 
             std::cout << "Buffer cleaned\n" << std::endl;
+        }
+        for (int k=0; k<x; k++) {
+            delete[] chroms[k];
         }
     }
     else {
@@ -767,6 +771,9 @@ int main(int argc, char *argv[])
             bwCleanup();
 
             std::cout << "Buffer cleaned\n" << std::endl;
+        }
+        for (int k=0; k<x; k++) {
+            delete[] chroms[k];
         }
     }
 

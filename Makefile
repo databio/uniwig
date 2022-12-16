@@ -10,7 +10,7 @@ uniwig: $(BUILD_DIR)/uniwig
 opt: $(BUILD_DIR)/opt
 
 $(BUILD_DIR)/uniwig: src/uniwig.cpp
-	$(CPP) $(CFLAGS) src/uniwig.cpp -L$(LIB_DIR) -lBigWig -Wl,-R$(LIB_DIR)  -o $(BUILD_DIR)/uniwig -lm -lz -O2
+	$(CPP) $(CFLAGS) src/uniwig.cpp -L$(LIB_DIR) -lBigWig -Wl,-R$(LIB_DIR)  -o $(BUILD_DIR)/uniwig -lm -lz -O2 -g
 
 $(BUILD_DIR)/opt:
 	$(CPP) $(CFLAGS) src/opt.cpp -o bin/opt
@@ -18,10 +18,9 @@ $(BUILD_DIR)/opt:
 clean:
 	-rm $(BUILD_DIR)/uniwig
 
-test_old:  # remove?
-	./bin/uniwig test/test.bed 1 5 0
-
 tests:
+	$(MAKE) clean
+	$(MAKE) uniwig
 	./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes testout
 
 rebuild:
