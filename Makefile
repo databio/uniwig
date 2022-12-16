@@ -23,6 +23,11 @@ tests:
 	$(MAKE) uniwig
 	./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes testout
 
+leaks:
+	$(MAKE) clean
+	$(MAKE) uniwig
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes testout
+
 rebuild:
 	$(MAKE) clean
 	$(MAKE) uniwig

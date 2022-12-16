@@ -615,7 +615,7 @@ int main(int argc, char *argv[])
                 // std::cout << "end sorted\t\t" << std::is_sorted(chromosome.ends.begin(),chromosome.ends.end()) << std::endl;
                 int chrSize = chromSizes[c];
                 if (chrSize == 0) {
-                    fprintf(stderr, "\t%s - not matched in the chrom_size file\n", c.c_str());
+                    fprintf(stderr, "\t%s\t- not matched in the chrom_size file\n", c.c_str());
                     failure++;
                     continue;
                 }
