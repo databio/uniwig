@@ -25,14 +25,14 @@ rebuild:
 tests:
 	$(MAKE) clean
 	$(MAKE) uniwig
-	./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes ./data/bw/test
+	time ./bin/uniwig -m 5 -w 10 test/test4.bed test/hg38.chrom.sizes ./data/bw/test
 
 testbig:
 	$(MAKE) clean
 	$(MAKE) uniwig
-	./bin/uniwig -s -m 5 test/test_big_sorted.bed test/hg38.chrom.sizes ./data/bw/test_big
+	./bin/uniwig -m 5 -w 10 test/test_big_sorted.bed test/hg38.chrom.sizes ./data/bw/test_big
 
 testleak:
 	$(MAKE) clean
 	$(MAKE) uniwig
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./bin/uniwig -m 5 test/test.bed test/hg38.chrom.sizes ./data/bw/test
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./bin/uniwig -m 5 -w 10 test/test4.bed test/hg38.chrom.sizes ./data/bw/test

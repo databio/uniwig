@@ -63,13 +63,20 @@ void showChromosomes_vec(std::vector<chromosome> chroms)
     std::cout << "\n";
 }
 
-static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom, std::string order)
+static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom, std::string order, int writeSize)
 {
-    std::vector<float> temp_values; // for later converting into array values to add to bw
+    std::vector<uint> temp_values; // for later converting into array values to add to bw
+
+    char* tempchrom = new char[chrom.length()+1];
+    strcpy(tempchrom,chrom.c_str());
 
     int countIndex = 1;
     int currentCount = 0;
     int cutSite = 0, previousCut = 0, endSite = 0, iterator = 0;
+    int err = 0;
+    float val = 0;
+    float* valp = NULL;
+    int n = 0;
 
     std::deque<int> closers;
     cutSite = input[iterator];
@@ -127,7 +134,22 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
             if (countIndex % stepSize == 0)
             {
                 // std::cout << currentCount << "\n";
-                temp_values.push_back((float) currentCount);
+                temp_values.push_back(currentCount);
+                val = (float) currentCount;
+                valp = &val;
+                if ((input[iterator-1]+countIndex-previousCut)%writeSize==0) {
+                    n = temp_values.size();
+                    valp = new float[n];
+                    // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
+                    for (int i=0; i<n; i++) {
+                        // std::cout << temp_values[i];
+                        valp[i] = (float) temp_values[i];
+                    }
+                    err = bwAddIntervalSpanSteps(fp,tempchrom,input[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+                    temp_values.clear();
+                    delete[] valp;
+                    if (err) goto addIntervalSpanStepsError;
+                }
             }
             ++countIndex;
         }
@@ -137,6 +159,9 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
 
     // In c we have to add one here for some reason.
     ++currentCount;
+
+    // std::cout << "\nREMAINING SIZE - " << temp_values.size() << std::endl;
+
     // Finish chromosome by printing 0s until we each the end.
     while (countIndex <= chrSize)
     {
@@ -156,34 +181,44 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
         if (countIndex % stepSize == 0)
         {
             // std::cout << currentCount << "\n";
-            temp_values.push_back((float) currentCount);
+            temp_values.push_back(currentCount);
+            val = (float) currentCount;
+            valp = &val;
+            if ((input[iterator-1]+countIndex-previousCut)%writeSize==0) {
+                n = temp_values.size();
+                valp = new float[n];
+                // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
+                for (int i=0; i<n; i++) {
+                    // std::cout << temp_values[i];
+                    valp[i] = (float) temp_values[i];
+                }
+                err = bwAddIntervalSpanSteps(fp,tempchrom,input[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+                temp_values.clear();
+                delete[] valp;
+                if (err) goto addIntervalSpanStepsError;
+            }
         }
         ++countIndex;
     }
 
-    char* tempchrom = new char[chrom.length()+1];
-    strcpy(tempchrom,chrom.c_str());
-
-    int n = temp_values.size();
-    float* values = new float[n];
+    n = temp_values.size();
+    valp = new float[n];
+    // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
     for (int i=0; i<n; i++) {
-        values[i] = temp_values[i];
+        // std::cout << temp_values[i];
+        valp[i] = (float) temp_values[i];
     }
-
-    if (!fp) {
-        fprintf(stderr, "Error while opening file\n");
-        return false;
-    }
-
-    int err = bwAddIntervalSpanSteps(fp,tempchrom,input[0],1,1,values,n);
-    delete[] tempchrom;
-    delete[] values;
+    err = bwAddIntervalSpanSteps(fp,tempchrom,input[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+    temp_values.clear();
+    delete[] valp;
     if (err) goto addIntervalSpanStepsError;
+    delete[] tempchrom;
 
     return true;
 
     addIntervalSpanStepsError:
         std::cout << "\n\t\tFailed addIntervalSpanStepsError for " << chrom << " - Error code " << err << std::endl;
+        delete[] tempchrom;
         return false;
 }
 
@@ -476,6 +511,7 @@ int main(int argc, char *argv[])
     bool sorted = false;
     int stepSize = 1;
     int smoothSize = 1;
+    int writeSize = 1;
 
     static struct option long_options[] =
     {
@@ -483,6 +519,7 @@ int main(int argc, char *argv[])
       {"sorted",    required_argument, 0, 's'},
       {"stepSize",    required_argument, 0, 't'},
       {"smoothSize",  required_argument, 0, 'm'},
+      {"writeSize",     required_argument, 0, 'w'},
       {"bedPath",  required_argument, 0, 'b'},
       {"chromSizePath", required_argument, 0, 'c'},
       {"fileHeader", required_argument, 0, 'f'},
@@ -491,7 +528,7 @@ int main(int argc, char *argv[])
 
     int option_index = 0;
     int opt; 
-    while ((opt = getopt_long(argc, argv, "vst:m:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "vst:m:w:", long_options, &option_index)) != -1) {
         switch (opt) {
         case 0:
             fprintf (stderr, "positional argument 1?\n");
@@ -508,6 +545,10 @@ int main(int argc, char *argv[])
             fprintf (stderr, "option -m with value '%s'\n", optarg);
             smoothSize = atoi(optarg); 
             break;
+        case 'w':
+            fprintf (stderr, "option -w with value '%s'\n", optarg);
+            writeSize = atoi(optarg);
+            break;
         default:
             fprintf(stderr, "Usage: %s [-vstm] [file...]\n", argv[0]);
             exit(EXIT_FAILURE);
@@ -521,6 +562,7 @@ int main(int argc, char *argv[])
     std::cerr << "Sorted bed file: " << sorted << std::endl;
     std::cerr << "Step size: " << stepSize << std::endl;
     std::cerr << "Smooth size: " << smoothSize << std::endl;
+    std::cerr << "Write size: " << writeSize << std::endl;
     std::cerr << "bedPath: " << bedPath << std::endl;
     std::cerr << "chromSizePath: " << chromSizePath << std::endl;
     std::cerr << "FileHeader: " << fileHeader << std::endl;
@@ -622,17 +664,17 @@ int main(int argc, char *argv[])
                         switch (j) {
                             case 0: {
                                 std::cout << "start";
-                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start", writeSize);
                                 break;
                             }
                             case 1: {
                                 std::cout << "end";
-                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end", writeSize);
                                 break;
                             }
                             case 2: {
                                 std::cout << "core";
-                                result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
+                                // result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
                                 break;
                             }                            
                         }
@@ -724,17 +766,17 @@ int main(int argc, char *argv[])
                         switch (j) {
                             case 0: {
                                 std::cout << "start";
-                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start");
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.starts, c, "start", writeSize);
                                 break;
                             }
                             case 1: {
                                 std::cout << "end";
-                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end");
+                                result = smoothFixedStartEndBW(fp, chrSize, stepSize, smoothSize, chromosome.ends, c, "end", writeSize);
                                 break;
                             }
                             case 2: {
                                 std::cout << "core";
-                                result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
+                                // result = fixedCoreBW(fp, chrSize, stepSize, chromosome.starts, chromosome.ends, c);
                                 break;
                             }                            
                         }

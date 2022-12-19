@@ -24,4 +24,4 @@ header="test"
 
 cat $RAWDATA_DIR$raw > $COMBDATA_DIR$unsorted
 
-time ./bin/uniwig -m 25 $COMBDATA_DIR$unsorted $CHROMSIZE $BW_DIR$header
+time ./bin/uniwig -m 5 -w 10 $COMBDATA_DIR$unsorted $CHROMSIZE $BW_DIR$header

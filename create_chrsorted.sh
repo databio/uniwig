@@ -29,4 +29,4 @@ cat $RAWDATA_DIR$raw > $COMBDATA_DIR$unsorted
 
 sort -k1,1V $COMBDATA_DIR$unsorted > $COMBDATA_DIR$chrsorted
 
-time ./bin/uniwig -s -m 5 $COMBDATA_DIR$chrsorted $CHROMSIZE $BW_DIR$header
+time ./bin/uniwig -s -m 5 -w 10 $COMBDATA_DIR$chrsorted $CHROMSIZE $BW_DIR$header
