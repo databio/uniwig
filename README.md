@@ -43,11 +43,12 @@ Make sure to change the `LIB_DIR` if your `libBigWig` and `uniwig` local reposit
 ## Usage:
 To use the compiled `uniwig` program located at `./bin/uniwig`, use the command with the following format
 ```
-./bin/uniwig (-s) -m (5) $combined_bed_file_path $chrom_size_file_path $bw_output_file_header
+./bin/uniwig (-s) -m (5) -w (1) $combined_bed_file_path $chrom_size_file_path $bw_output_file_header
 ```
 With the parameters
 - `-s` for specifying whether the provided combined bed file is already sorted by the chromosome number. If `-s` flag is not given, `uniwig` will sort the combined bed file by chromosome number.
 - `-m` for specifying the smooth size. The positive integer number given after the `-m` flag will be used to select the window size for smoothing the coordinates.
+- `-w` for specifying the write size. The data will be written into `.bw` files in chunks to reduce memory usage, and the chunk size (number of lines) will be determined by the `-w` flag.
 - `$combined_bed_file_path` for specifying the path of combined bed file. A relative path given would start changing directories from `uniwig` local repository (it is recommanded to put the combined bed file in `./data/combined/`)
 - `$chrom_size_file_path` for specifying the path of chromosome size reference file. There is a reference file provided in this repository, located at `./test/hg38.chrom.sizes`, but you are welcome to use any other reference files (such as [refgenie](https://refgenie.databio.org/en/latest/))
 - `$bw_output_file_header` for specifying the header of the BigWig output file. There will be three `.bw` files produced, ending with `_start.bw`, `_end.bw`, and `_core.bw`. The input for this parameter will be added to the output file paths as prefixes (it is recommanded to put the output BigWig file in `./data/bw/`)
