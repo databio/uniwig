@@ -534,6 +534,19 @@ std::vector<chromosome> read_bed_vec(const char *bedPath)
     return chromosomes;
 }
 
+void print_help(char* argv) {
+    fprintf(stderr, "Usage: %s [-h] [-v] [-s] [-tmw] [file...]\n\n", argv);
+    fprintf(stderr, "uniwig -- produce wig/bigwig files from bed files\n\n");
+    fprintf(stderr, "required arguments:\n");
+    fprintf(stderr, "  -t                   step size\n");
+    fprintf(stderr, "  -m                   smooth size\n");
+    fprintf(stderr, "  -w                   write size\n");
+    fprintf(stderr, "\noptional arguments:\n");
+    fprintf(stderr, "  -h                   show help commands\n");
+    fprintf(stderr, "  -v                   format variables\n");
+    fprintf(stderr, "  -s                   bed files alreaday sorted\n");
+}
+
 int main(int argc, char *argv[])
 {
     bool variableFormat = false;
@@ -557,10 +570,13 @@ int main(int argc, char *argv[])
 
     int option_index = 0;
     int opt; 
-    while ((opt = getopt_long(argc, argv, "vst:m:w:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvst:m:w:", long_options, &option_index)) != -1) {
         switch (opt) {
         case 0:
             fprintf (stderr, "positional argument 1?\n");
+        case 'h':
+            print_help(argv[0]); 
+            exit(0);
         case 'v':
             fprintf (stderr, "option -v\n");
             variableFormat = true; break;
@@ -579,7 +595,7 @@ int main(int argc, char *argv[])
             writeSize = atoi(optarg);
             break;
         default:
-            fprintf(stderr, "Usage: %s [-vstm] [file...]\n", argv[0]);
+            print_help(argv[0]);
             exit(EXIT_FAILURE);
         }
     }
