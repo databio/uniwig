@@ -140,12 +140,12 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
                 if ((input[iterator-1]+countIndex-previousCut)%writeSize==0) {
                     n = temp_values.size();
                     valp = new float[n];
-                    // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
+                   // std::cout << "\n" << countIndex-n+1 << " - " << countIndex << std::endl;
                     for (int i=0; i<n; i++) {
-                        // std::cout << temp_values[i];
+                   //     std::cout << temp_values[i];
                         valp[i] = (float) temp_values[i];
                     }
-                    err = bwAddIntervalSpanSteps(fp,tempchrom,input[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+                    err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
                     temp_values.clear();
                     delete[] valp;
                     if (err) goto addIntervalSpanStepsError;
@@ -184,12 +184,12 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
             if ((input[iterator-1]+countIndex-previousCut)%writeSize==0) {
                 n = temp_values.size();
                 valp = new float[n];
-                // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
+              //  std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
                 for (int i=0; i<n; i++) {
-                    // std::cout << temp_values[i];
+               //     std::cout << temp_values[i];
                     valp[i] = (float) temp_values[i];
                 }
-                err = bwAddIntervalSpanSteps(fp,tempchrom,input[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+                err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
                 temp_values.clear();
                 delete[] valp;
                 if (err) goto addIntervalSpanStepsError;
@@ -205,7 +205,7 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
         // std::cout << temp_values[i];
         valp[i] = (float) temp_values[i];
     }
-    err = bwAddIntervalSpanSteps(fp,tempchrom,input[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+    err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
     temp_values.clear();
     delete[] valp;
     if (err) goto addIntervalSpanStepsError;
@@ -305,7 +305,7 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
                         // std::cout << temp_values[i];
                         valp[i] = (float) temp_values[i];
                     }
-                    err = bwAddIntervalSpanSteps(fp,tempchrom,start[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+                    err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
                     temp_values.clear();
                     delete[] valp;
                     if (err) goto addIntervalSpanStepsError;
@@ -349,7 +349,7 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
                     // std::cout << temp_values[i];
                     valp[i] = (float) temp_values[i];
                 }
-                err = bwAddIntervalSpanSteps(fp,tempchrom,start[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+                err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
                 temp_values.clear();
                 delete[] valp;
                 if (err) goto addIntervalSpanStepsError;
@@ -365,7 +365,7 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
         // std::cout << temp_values[i];
         valp[i] = (float) temp_values[i];
     }
-    err = bwAddIntervalSpanSteps(fp,tempchrom,start[iterator-1]+countIndex-previousCut-n+1,1,1,valp,n);
+    err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
     temp_values.clear();
     delete[] valp;
     if (err) goto addIntervalSpanStepsError;
