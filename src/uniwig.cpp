@@ -34,7 +34,7 @@ struct chromosome
 void showChromosomes_map(std::map<std::string, chromosome> chroms)
 {
     std::cout << "\nRegions: ";
-    for (std::map<std::string, chromosome>::iterator it=chroms.begin(); it!=chroms.end(); it++)
+    for (std::map<std::string, chromosome>::iterator it = chroms.begin(); it != chroms.end(); it++)
     {
         chromosome chromosome = it->second;
         int length = chromosome.starts.size(); //number of regions
@@ -50,7 +50,7 @@ void showChromosomes_map(std::map<std::string, chromosome> chroms)
 void showChromosomes_vec(std::vector<chromosome> chroms)
 {
     std::cout << "\nRegions: ";
-    for (int chr_nr=0; chr_nr<chroms.size(); chr_nr++)
+    for (int chr_nr = 0; chr_nr < (int) chroms.size(); chr_nr++)
     {
         chromosome chromosome = chroms[chr_nr];
         int length = chromosome.starts.size(); //number of regions
@@ -63,7 +63,14 @@ void showChromosomes_vec(std::vector<chromosome> chroms)
     std::cout << "\n";
 }
 
-static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, int smoothSize, std::vector<int> input, std::string chrom, std::string order, int writeSize)
+static bool smoothFixedStartEndBW(bigWigFile_t *fp, 
+                                   int chrSize, 
+                                   int stepSize, 
+                                   int smoothSize, 
+                                   std::vector<int> input, 
+                                   std::string chrom, 
+                                   std::string order, 
+                                   int writeSize)
 {
     std::vector<uint> temp_values; // for later converting into array values to add to bw
 
@@ -97,7 +104,7 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
 
     // Loop through cuts, converting to wiggle format
     //while (std::cin >> cutSite)
-    while (iterator < input.size())
+    while (iterator < (int) input.size())
     {
         cutSite = input[iterator];
         cutSite -= smoothSize;
@@ -133,16 +140,13 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
             }
             if (countIndex % stepSize == 0)
             {
-                // std::cout << currentCount << "\n";
                 temp_values.push_back(currentCount);
                 val = (float) currentCount;
                 valp = &val;
-                if ((input[iterator-1]+countIndex-previousCut)%writeSize==0) {
+                if ((input[iterator-1] + countIndex - previousCut) % writeSize == 0) {
                     n = temp_values.size();
                     valp = new float[n];
-                   // std::cout << "\n" << countIndex-n+1 << " - " << countIndex << std::endl;
-                    for (int i=0; i<n; i++) {
-                   //     std::cout << temp_values[i];
+                    for (int i = 0; i < n; i++) {
                         valp[i] = (float) temp_values[i];
                     }
                     err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
@@ -181,15 +185,13 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
             temp_values.push_back(currentCount);
             val = (float) currentCount;
             valp = &val;
-            if ((input[iterator-1]+countIndex-previousCut)%writeSize==0) {
+            if ((input[iterator-1] + countIndex - previousCut) % writeSize == 0) {
                 n = temp_values.size();
                 valp = new float[n];
-              //  std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
-                for (int i=0; i<n; i++) {
-               //     std::cout << temp_values[i];
+                for (int i = 0; i < n; i++) {
                     valp[i] = (float) temp_values[i];
                 }
-                err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
+                err = bwAddIntervalSpanSteps(fp, tempchrom, countIndex-n+1 , 1, 1, valp, n);
                 temp_values.clear();
                 delete[] valp;
                 if (err) goto addIntervalSpanStepsError;
@@ -200,12 +202,10 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
 
     n = temp_values.size();
     valp = new float[n];
-    // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
-    for (int i=0; i<n; i++) {
-        // std::cout << temp_values[i];
+    for (int i = 0; i < n; i++) {
         valp[i] = (float) temp_values[i];
     }
-    err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
+    err = bwAddIntervalSpanSteps(fp, tempchrom, countIndex-n+1, 1, 1, valp, n);
     temp_values.clear();
     delete[] valp;
     if (err) goto addIntervalSpanStepsError;
@@ -220,7 +220,13 @@ static bool smoothFixedStartEndBW(bigWigFile_t *fp, int chrSize, int stepSize, i
 }
 
 
-static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector<int> start, std::vector<int> end, std::string chrom, int writeSize)
+static bool fixedCoreBW(bigWigFile_t *fp, 
+                        int chrSize, 
+                        int stepSize, 
+                        std::vector<int> start, 
+                        std::vector<int> end, 
+                        std::string chrom, 
+                        int writeSize)
 {
     std::vector<uint> temp_values; // for later converting into array values to add to bw
 
@@ -239,8 +245,6 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
     cutSite = start[iterator];
     endSite = end[iterator];
     iterator++;
-    // cutSite -= smoothSize;
-    // endSite = cutSite + 1 + smoothSize * 2;
     if (cutSite < 1)
     {
         cutSite = 1;
@@ -254,13 +258,9 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
     previousCut = cutSite;
 
     // Loop through cuts, converting to wiggle format
-    //while (std::cin >> cutSite)
-    while (iterator < start.size())
+    while (iterator < (int) start.size())
     {
-        // cutSite = input[iterator];
         cutSite = start[iterator];
-        // endSite = end[iterator];
-        // cutSite -= smoothSize;
         ++currentCount;
         closers.push_back(end[iterator]);
         if (cutSite < 1)
@@ -275,7 +275,6 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
             continue; // skip to next read
         }
 
-        //int whileloop = 0;
         while (countIndex < cutSite)
         {
             while (endSite == countIndex)
@@ -293,19 +292,16 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
             }
             if (countIndex % stepSize == 0)
             {
-                // std::cout << currentCount << "\n";
                 temp_values.push_back(currentCount);
                 val = (float) currentCount;
                 valp = &val;
-                if ((start[iterator-1]+countIndex-previousCut)%writeSize==0) {
+                if ((start[iterator-1] + countIndex - previousCut) % writeSize == 0) {
                     n = temp_values.size();
                     valp = new float[n];
-                    // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
-                    for (int i=0; i<n; i++) {
-                        // std::cout << temp_values[i];
+                    for (int i = 0; i < n; i++) {
                         valp[i] = (float) temp_values[i];
                     }
-                    err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
+                    err = bwAddIntervalSpanSteps(fp, tempchrom, countIndex-n+1, 1, 1, valp, n);
                     temp_values.clear();
                     delete[] valp;
                     if (err) goto addIntervalSpanStepsError;
@@ -337,19 +333,16 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
         }
         if (countIndex % stepSize == 0)
         {
-            // std::cout << currentCount << "\n";
             temp_values.push_back(currentCount);
             val = (float) currentCount;
             valp = &val;
-            if ((start[iterator-1]+countIndex-previousCut)%writeSize==0) {
+            if ((start[iterator-1] + countIndex - previousCut) % writeSize == 0) {
                 n = temp_values.size();
                 valp = new float[n];
-                // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
-                for (int i=0; i<n; i++) {
-                    // std::cout << temp_values[i];
+                for (int i = 0; i < n; i++) {
                     valp[i] = (float) temp_values[i];
                 }
-                err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
+                err = bwAddIntervalSpanSteps(fp, tempchrom, countIndex-n+1, 1, 1, valp, n);
                 temp_values.clear();
                 delete[] valp;
                 if (err) goto addIntervalSpanStepsError;
@@ -360,12 +353,10 @@ static bool fixedCoreBW(bigWigFile_t *fp, int chrSize, int stepSize, std::vector
 
     n = temp_values.size();
     valp = new float[n];
-    // std::cout << "\n" << input[iterator-1]+countIndex-previousCut-n+1 << " - " << input[iterator-1]+countIndex-previousCut << std::endl;
-    for (int i=0; i<n; i++) {
-        // std::cout << temp_values[i];
+    for (int i = 0; i < n; i++) {
         valp[i] = (float) temp_values[i];
     }
-    err = bwAddIntervalSpanSteps(fp,tempchrom,countIndex-n+1,1,1,valp,n);
+    err = bwAddIntervalSpanSteps(fp, tempchrom, countIndex-n+1, 1, 1, valp, n);
     temp_values.clear();
     delete[] valp;
     if (err) goto addIntervalSpanStepsError;
@@ -415,7 +406,6 @@ std::map<std::string, chromosome> read_bed_map(const char *bedPath)
 {
     //vector of vector of regions to store regions in one vector per chromosome
     std::cout << "\nReading chromosomes" << std::endl;
-    //std::cout << "\nInput file: " << bedPath << "\n";
     gzFile fp;
     kstream_t *ks;
     kstring_t str = {0, 0, 0};
@@ -426,10 +416,8 @@ std::map<std::string, chromosome> read_bed_map(const char *bedPath)
         exit(1);
     }
     ks = ks_init(fp);
-    // chromosome chr;
     char chrom[100] = "";
     std::map<std::string, chromosome> chromosomes;
-    // std::vector<chromosome> chromosomes;
 
     while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0)
     {
@@ -437,15 +425,12 @@ std::map<std::string, chromosome> read_bed_map(const char *bedPath)
         int32_t st, en;
         ctg = parse_bed(str.s, &st, &en, &rest);
 
-        // std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
-
         if (ctg) {
             if (strcmp(chrom, ctg) != 0) {
                 strcpy(chrom, ctg);
                 if (chromosomes.find(chrom) == chromosomes.end()) {
                     chromosome chr;
                     chr.chrom = std::string(chrom);
-                    // fprintf(stderr, "Creating a new chromosome: %s\n", chr.chrom.c_str());
                     chromosomes.insert(std::pair<std::string, chromosome>(chrom, chr));
                 }
             }
@@ -471,7 +456,6 @@ std::map<std::string, chromosome> read_bed_map(const char *bedPath)
 std::vector<chromosome> read_bed_vec(const char *bedPath)
 {
     //vector of vector of regions to store regions in one vector per chromosome
-    //std::cout << "\nInput file: " << bedPath << "\n";
     std::cout << "\nReading chromosomes" << std::endl;
     gzFile fp;
     kstream_t *ks;
@@ -492,7 +476,6 @@ std::vector<chromosome> read_bed_vec(const char *bedPath)
         char *ctg, *rest;
         int32_t st, en;
         ctg = parse_bed(str.s, &st, &en, &rest);
-        //std:: cout << "\n" << ctg << "\t" << st << "\t" << en;
         if (strcmp(chrom, "") == 0)
         {
             strcpy(chrom, ctg);
@@ -505,9 +488,8 @@ std::vector<chromosome> read_bed_vec(const char *bedPath)
         {
             if(strcmp(chrom, ctg) != 0)
             {
-                // std::cout << "\nI'm here, chrom = " << chrom << ", ctg = " << ctg <<  ", compare result: "<< strcmp(chrom, ctg) <<"\n";
-                kx::radix_sort(chr.starts.begin(),chr.starts.end());
-                kx::radix_sort(chr.ends.begin(),chr.ends.end());
+                kx::radix_sort(chr.starts.begin(), chr.starts.end());
+                kx::radix_sort(chr.ends.begin(), chr.ends.end());
                 chromosomes.push_back(chr);
 
                 strcpy(chrom, ctg);
@@ -544,7 +526,7 @@ void print_help(char* argv) {
     fprintf(stderr, "\noptional arguments:\n");
     fprintf(stderr, "  -h                   show help commands\n");
     fprintf(stderr, "  -v                   format variables\n");
-    fprintf(stderr, "  -s                   bed files alreaday sorted\n");
+    fprintf(stderr, "  -s                   bed files are already sorted\n");
 }
 
 int main(int argc, char *argv[])
@@ -624,14 +606,9 @@ int main(int argc, char *argv[])
     std::ifstream ReadChromSize(chromSizePath);
     std::string eachSize;
     std::string delim = "\t";
-    // std::vector<char*> temp_chroms;
-    // std::vector<uint32_t> temp_chrLens;
-    // int x = 0;
     while (getline(ReadChromSize, eachSize)) {
-        // std::cout << "each line is: " << eachSize << std::endl;
         std::string chromname = eachSize.substr(0,eachSize.find(delim));
         int size = stoi(eachSize.substr(eachSize.find(delim),-1));
-        // std::cout << chromname << " " << size << std::endl;
         chromSizes.insert(std::pair<std::string, int>(chromname, size));
     }
 
@@ -646,12 +623,11 @@ int main(int argc, char *argv[])
     if (sorted) {
         std::vector<chromosome> chromosomes;
         chromosomes = read_bed_vec(bedPath);
-        // showChromosomes_vec(chromosomes);
 
         int x = chromosomes.size();
         char *chroms[x];
         uint32_t chrLens[x];
-        for (int i=0; i<x; i++) {
+        for (int i = 0; i < x; i++) {
             chromosome chromosome = chromosomes[i];
             std::string c = chromosome.chrom;
             char* tempc = new char[c.length()+1];
@@ -660,7 +636,7 @@ int main(int argc, char *argv[])
             chrLens[i] = chromSizes[c];
         }
 
-        for (int j=0; j<3; j++) { // for bw file
+        for (int j = 0; j < 3; j++) { // for bw file
             char* fname = new char[fnames[j].length()+1];
             strcpy(fname,fnames[j].c_str());
 
@@ -686,7 +662,7 @@ int main(int argc, char *argv[])
 
             
             // for chrom, write
-            for (int chrom=0; chrom<chromosomes.size(); chrom++) {
+            for (int chrom = 0; chrom < (int) chromosomes.size(); chrom++) {
                 chromosome chromosome = chromosomes[chrom];
                 std::string c = chromosome.chrom;
                 /* checking if the chr starts and ends are sorted */
@@ -705,7 +681,7 @@ int main(int argc, char *argv[])
 
                     bool result = false;
                     // ignoring smoothSize = 0 and variableFormat = true
-                    if (smoothSize!=0 && !variableFormat) {
+                    if (smoothSize != 0 && !variableFormat) {
                         switch (j) {
                             case 0: {
                                 std::cout << "start";
@@ -741,30 +717,29 @@ int main(int argc, char *argv[])
 
             std::cout << "Buffer cleaned\n" << std::endl;
         }
-        for (int k=0; k<x; k++) {
+        for (int k = 0; k < x; k++) {
             delete[] chroms[k];
         }
     }
     else {
         std::map<std::string, chromosome> chromosomes;
         chromosomes = read_bed_map(bedPath);
-        // showChromosomes_map(chromosomes);
 
         int x = chromosomes.size();
         char *chroms[x];
         uint32_t chrLens[x];
         int i = 0;
-        for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++) {
+        for (std::map<std::string, chromosome>::iterator it = chromosomes.begin(); it != chromosomes.end(); it++) {
             std::string c = it->first;
-            char* tempc = new char[c.length()+1];
+            char* tempc = new char[c.length() + 1];
             strcpy(tempc, c.c_str());
             chroms[i] = tempc;
             chrLens[i] = chromSizes[c];
             i++;
         }
         
-        for (int j=0; j<3; j++) { // for bw file
-            char* fname = new char[fnames[j].length()+1];
+        for (int j = 0; j < 3; j++) { // for bw file
+            char* fname = new char[fnames[j].length() + 1];
             strcpy(fname,fnames[j].c_str());
 
             bigWigFile_t *fp = NULL;
@@ -788,7 +763,7 @@ int main(int argc, char *argv[])
             std::cout << "Processing each chromosome" << std::endl;
 
             // for chrom, write
-            for (std::map<std::string, chromosome>::iterator it=chromosomes.begin(); it!=chromosomes.end(); it++) {
+            for (std::map<std::string, chromosome>::iterator it = chromosomes.begin(); it != chromosomes.end(); it++) {
                 chromosome chromosome = it->second;
                 std::string c = chromosome.chrom;
                 /* checking if the chr starts and ends are sorted */
@@ -843,7 +818,7 @@ int main(int argc, char *argv[])
 
             std::cout << "Buffer cleaned\n" << std::endl;
         }
-        for (int k=0; k<x; k++) {
+        for (int k = 0; k < x; k++) {
             delete[] chroms[k];
         }
     }
