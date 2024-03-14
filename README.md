@@ -3,12 +3,12 @@
 Given a set of bed files, we want to produce 2 [BigWig](http://genome.ucsc.edu/goldenPath/help/bigWig.html) files: one track of the start coordinates, one track of the end coordinates, and one track for core coordinates.
 
 ## Prerequisites
-- [libBigWig](https://github.com/dpryan79/libBigWig) - a C library for processing BigWig files.
 
-You will need to install the `libBigWig` library locally by following these steps:
+Uniwig will rely on [libBigWig](https://github.com/dpryan79/libBigWig), a C library for processing BigWig files. You will need to compile the `libBigWig` library locally first, then you can compile uniwig. The steps are described below.
 
+## Compiling uniwig
 
-## 1. Clone the `libBigWig` and `uniwig` repositories
+### 1. Clone the `libBigWig` and `uniwig` repositories
 
 We recommend you clone this repository so `libBigWig` and `uniwig` are parallel folders at the same level. 
 
@@ -17,7 +17,7 @@ git clone https://github.com/dpryan79/libBigWig
 git clone https://github.com/databio/uniwig
 ```
 
-## Compile `libBigWig` with provided `Makefile`
+### 2. Compile `libBigWig` with provided `Makefile`
 
 This should add two library files `libBigWig.a` and `libBigWig.so` in your `libBigWig` local repository:
 
@@ -26,7 +26,7 @@ cd libBigWig
 make install prefix=lib
 ```
 
-## Compiling uniwig
+### 3. Compile uniwig
 
 With libBigWig compiled, you can use the `Makefile` to compile, test, or remove `uniwig`. The compiled program will have the path of `./bin/uniwig` (assuming you are already in the `uniwig` local repository). Below are some commands with different `Makefile` usage.
 
@@ -55,7 +55,7 @@ make rebuild
 
 If your `libBigWig` and `uniwig` local repositories are *not* located at the same level, then change the `LIB_DIR` in the `Makefile`. The default path for `LIB_DIR` is a relative path from `uniwig` local repository to `libBigWig` local repository, which has the library files already compiled.
 
-## Usage:
+## Uniwig usage:
 
 To use the compiled `uniwig` program located at `./bin/uniwig`, use the command with the following format
 
