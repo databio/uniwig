@@ -480,7 +480,7 @@ int main(int argc, char *argv[]) {
   bool sorted = false;
   int stepSize = 1;
   int smoothSize = 1;
-  int writeSize = 1;
+  int writeSize = 10000;
 
   static struct option long_options[] = {
       {"variableFormat", required_argument, 0, 'v'},
